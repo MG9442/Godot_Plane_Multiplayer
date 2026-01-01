@@ -15,11 +15,6 @@ run/main_scene="res://Scenes/UI/MainMenu.tscn"
 config/features=PackedStringArray("4.3", "Forward Plus")
 config/icon="res://icon.svg"
 
-[display]
-
-window/size/viewport_width=1820
-window/size/viewport_height=980
-
 [dotnet]
 
 project/assembly_name="Multiplayer Plane game"

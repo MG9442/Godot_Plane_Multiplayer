@@ -91,7 +91,7 @@ func _on_start_button_pressed():
 @rpc("authority", "call_local")
 func start_game():
 	# This will be called on all clients when the host starts the game
-	get_tree().change_scene_to_file("res://Scenes/Main.tscn")
+	get_tree().change_scene_to_file("res://Scenes/UI/PlaneSelection.tscn")
 
 
 # Multiplayer callbacks
