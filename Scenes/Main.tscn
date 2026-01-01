@@ -1,4 +1,4 @@
-[gd_scene load_steps=28 format=4 uid="uid://cbq2fspigtnyy"]
+[gd_scene load_steps=30 format=4 uid="uid://cbq2fspigtnyy"]
 
 [ext_resource type="Texture2D" uid="uid://kqfvdrmsqkc6" path="res://Sprites/Objects/Basic_Plants.png" id="4_ps4mp"]
 [ext_resource type="Texture2D" uid="uid://d4crvvtabn7ck" path="res://Sprites/Objects/Basic_Grass_Biom_things.png" id="5_2dea3"]
@@ -10,6 +10,8 @@
 [ext_resource type="Texture2D" uid="uid://d215f72i82nkm" path="res://Sprites/Clouds/Cloud1.png" id="11_glan1"]
 [ext_resource type="Script" path="res://Scenes/CloudLogic.gd" id="12_7f2ke"]
 [ext_resource type="Texture2D" uid="uid://u1k15awgx256" path="res://Sprites/Clouds/Cloud_0.png" id="13_048jw"]
+[ext_resource type="PackedScene" uid="uid://cguasj6takqxx" path="res://Scenes/main_menu.tscn" id="14_nnvn5"]
+[ext_resource type="PackedScene" uid="uid://dvxkka4o0rybo" path="res://Scenes/network_menu.tscn" id="15_34kjm"]
 [ext_resource type="Texture2D" uid="uid://con72o1jpbwqw" path="res://Sprites/Tilesets/Water.png" id="85_duuus"]
 [ext_resource type="Texture2D" uid="uid://dpkdcq336whdg" path="res://Sprites/Tilesets/Grass.png" id="86_re31j"]
 [ext_resource type="Texture2D" uid="uid://d4j278b46fu0w" path="res://Sprites/Tilesets/Hills.png" id="87_qkyj4"]
@@ -923,17 +925,10 @@ texture = SubResource("GradientTexture1D_ujqr6")
 
 [node name="Clouds" type="Node2D" parent="Environment"]
 
-[node name="Cloud1" type="Sprite2D" parent="Environment/Clouds"]
-modulate = Color(1, 1, 1, 0.360784)
-z_index = 1
-position = Vector2(-786, 18)
-texture = ExtResource("11_glan1")
-script = ExtResource("12_7f2ke")
-
 [node name="Cloud16" type="Sprite2D" parent="Environment/Clouds"]
 modulate = Color(1, 1, 1, 0.360784)
 z_index = 1
-position = Vector2(-417, 269)
+position = Vector2(-427, 271)
 texture = ExtResource("11_glan1")
 script = ExtResource("12_7f2ke")
 
@@ -947,21 +942,21 @@ script = ExtResource("12_7f2ke")
 [node name="Cloud2" type="Sprite2D" parent="Environment/Clouds"]
 modulate = Color(1, 1, 1, 0.360784)
 z_index = 1
-position = Vector2(-326, -194)
+position = Vector2(-356, -170)
 texture = ExtResource("11_glan1")
 script = ExtResource("12_7f2ke")
 
 [node name="Cloud9" type="Sprite2D" parent="Environment/Clouds"]
 modulate = Color(1, 1, 1, 0.360784)
 z_index = 1
-position = Vector2(96, 169)
+position = Vector2(51, 148)
 texture = ExtResource("11_glan1")
 script = ExtResource("12_7f2ke")
 
 [node name="Cloud3" type="Sprite2D" parent="Environment/Clouds"]
 modulate = Color(1, 1, 1, 0.360784)
 z_index = 1
-position = Vector2(102, -14)
+position = Vector2(61, -17)
 texture = ExtResource("11_glan1")
 flip_h = true
 script = ExtResource("12_7f2ke")
@@ -969,7 +964,7 @@ script = ExtResource("12_7f2ke")
 [node name="Cloud18" type="Sprite2D" parent="Environment/Clouds"]
 modulate = Color(1, 1, 1, 0.360784)
 z_index = 1
-position = Vector2(432, 335)
+position = Vector2(448, 272)
 texture = ExtResource("11_glan1")
 flip_h = true
 script = ExtResource("12_7f2ke")
@@ -983,19 +978,10 @@ texture = ExtResource("11_glan1")
 flip_h = true
 script = ExtResource("12_7f2ke")
 
-[node name="Cloud17" type="Sprite2D" parent="Environment/Clouds"]
-modulate = Color(1, 1, 1, 0.360784)
-z_index = 1
-position = Vector2(834, -60)
-scale = Vector2(0.76, 0.84)
-texture = ExtResource("11_glan1")
-flip_h = true
-script = ExtResource("12_7f2ke")
-
 [node name="Cloud22" type="Sprite2D" parent="Environment/Clouds"]
 modulate = Color(1, 1, 1, 0.360784)
 z_index = 1
-position = Vector2(634, 161)
+position = Vector2(519, 148)
 scale = Vector2(0.76, 0.84)
 texture = ExtResource("11_glan1")
 flip_h = true
@@ -1004,7 +990,7 @@ script = ExtResource("12_7f2ke")
 [node name="Cloud5" type="Sprite2D" parent="Environment/Clouds"]
 modulate = Color(1, 1, 1, 0.360784)
 z_index = 1
-position = Vector2(36, -192)
+position = Vector2(21, -179)
 scale = Vector2(0.76, 0.84)
 texture = ExtResource("13_048jw")
 flip_h = true
@@ -1013,7 +999,7 @@ script = ExtResource("12_7f2ke")
 [node name="Cloud19" type="Sprite2D" parent="Environment/Clouds"]
 modulate = Color(1, 1, 1, 0.360784)
 z_index = 1
-position = Vector2(-17, 314)
+position = Vector2(-26, 289)
 scale = Vector2(0.76, 0.84)
 texture = ExtResource("13_048jw")
 flip_h = true
@@ -1031,7 +1017,7 @@ script = ExtResource("12_7f2ke")
 [node name="Cloud21" type="Sprite2D" parent="Environment/Clouds"]
 modulate = Color(1, 1, 1, 0.360784)
 z_index = 1
-position = Vector2(-370, 131)
+position = Vector2(-357, 136)
 scale = Vector2(0.76, 0.84)
 texture = ExtResource("13_048jw")
 flip_h = true
@@ -1040,7 +1026,7 @@ script = ExtResource("12_7f2ke")
 [node name="Cloud6" type="Sprite2D" parent="Environment/Clouds"]
 modulate = Color(1, 1, 1, 0.360784)
 z_index = 1
-position = Vector2(-316, 192)
+position = Vector2(616, -58)
 scale = Vector2(0.400001, 0.442106)
 texture = ExtResource("13_048jw")
 flip_h = true
@@ -1067,7 +1053,7 @@ script = ExtResource("12_7f2ke")
 [node name="Cloud14" type="Sprite2D" parent="Environment/Clouds"]
 modulate = Color(1, 1, 1, 0.360784)
 z_index = 1
-position = Vector2(-102, -96)
+position = Vector2(-206, 60)
 scale = Vector2(0.400001, 0.442106)
 texture = ExtResource("13_048jw")
 flip_h = true
@@ -1076,7 +1062,7 @@ script = ExtResource("12_7f2ke")
 [node name="Cloud15" type="Sprite2D" parent="Environment/Clouds"]
 modulate = Color(1, 1, 1, 0.360784)
 z_index = 1
-position = Vector2(269, 276)
+position = Vector2(142, 264)
 scale = Vector2(0.400001, 0.442106)
 texture = ExtResource("13_048jw")
 flip_h = true
@@ -1094,7 +1080,7 @@ script = ExtResource("12_7f2ke")
 [node name="Cloud11" type="Sprite2D" parent="Environment/Clouds"]
 modulate = Color(1, 1, 1, 0.360784)
 z_index = 1
-position = Vector2(-905, 310)
+position = Vector2(-794, 236)
 scale = Vector2(0.76, 0.84)
 texture = ExtResource("13_048jw")
 flip_h = true
@@ -1103,8 +1089,37 @@ script = ExtResource("12_7f2ke")
 [node name="Cloud8" type="Sprite2D" parent="Environment/Clouds"]
 modulate = Color(1, 1, 1, 0.360784)
 z_index = 1
-position = Vector2(-806, -191)
+position = Vector2(-743, -166)
 scale = Vector2(0.76, 0.84)
 texture = ExtResource("13_048jw")
 flip_h = true
 script = ExtResource("12_7f2ke")
+
+[node name="Cloud1" type="Sprite2D" parent="Environment/Clouds"]
+modulate = Color(1, 1, 1, 0.360784)
+z_index = 1
+position = Vector2(-686, -29)
+texture = ExtResource("11_glan1")
+script = ExtResource("12_7f2ke")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="TitleLabel" type="Label" parent="CanvasLayer"]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -673.0
+offset_top = 116.0
+offset_right = 674.0
+offset_bottom = 321.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 150
+text = "Frequent Fighters"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="MainMenu" parent="CanvasLayer" instance=ExtResource("14_nnvn5")]
+
+[node name="NetworkUI" parent="CanvasLayer" instance=ExtResource("15_34kjm")]
+visible = false

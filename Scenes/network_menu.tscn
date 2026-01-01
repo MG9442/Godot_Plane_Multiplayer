@@ -1,0 +1,114 @@
+[gd_scene load_steps=4 format=3 uid="uid://dvxkka4o0rybo"]
+
+[ext_resource type="Theme" uid="uid://do7oe1yppup5w" path="res://Button_Theme.tres" id="1_eflu0"]
+[ext_resource type="Script" path="res://Scenes/network_menu.gd" id="1_ojudh"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_g4lg0"]
+bg_color = Color(0.00351917, 0.00351917, 0.00351916, 0.141176)
+
+[node name="NetworkUI" type="Control"]
+layout_mode = 3
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_eflu0")
+script = ExtResource("1_ojudh")
+
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 2
+offset_left = -475.0
+offset_top = -83.0
+offset_right = 484.0
+offset_bottom = 456.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_g4lg0")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -508.0
+offset_right = 508.0
+offset_bottom = 415.0
+grow_horizontal = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="Container" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Spacer" type="Control" parent="VBoxContainer/Container"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="LineEdit" type="LineEdit" parent="VBoxContainer/Container"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 35
+placeholder_text = "IP Address..."
+
+[node name="LineEdit2" type="LineEdit" parent="VBoxContainer/Container"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 35
+placeholder_text = "Port..."
+
+[node name="Spacer2" type="Control" parent="VBoxContainer/Container"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Spacer" type="Control" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.1
+
+[node name="Container2" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Spacer" type="Control" parent="VBoxContainer/Container2"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="JoinButton" type="Button" parent="VBoxContainer/Container2"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+theme_override_font_sizes/font_size = 32
+text = "Connect"
+
+[node name="Spacer2" type="Control" parent="VBoxContainer/Container2"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Spacer2" type="Control" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.1
+
+[node name="Container3" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Spacer" type="Control" parent="VBoxContainer/Container3"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BackButton" type="Button" parent="VBoxContainer/Container3"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+theme_override_font_sizes/font_size = 32
+text = "Back"
+
+[node name="Spacer2" type="Control" parent="VBoxContainer/Container3"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[connection signal="pressed" from="VBoxContainer/Container2/JoinButton" to="." method="_on_join_button_pressed"]
+[connection signal="pressed" from="VBoxContainer/Container3/BackButton" to="." method="_on_back_button_pressed"]
