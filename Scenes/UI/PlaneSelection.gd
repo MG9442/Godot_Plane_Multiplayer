@@ -2,7 +2,7 @@ extends Control
 
 const PlayerSelectionCard = preload("res://Scenes/UI/PlayerSelectionCard.tscn")
 
-@onready var player_container = $PlayerContainer
+@onready var player_container = $ScrollContainer/PlayerContainer
 @onready var ready_button = $ReadyButton
 @onready var status_label = $StatusLabel
 
