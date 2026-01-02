@@ -23,21 +23,24 @@ func _ready():
 	# Small delay to ensure multiplayer is fully set up
 	await get_tree().create_timer(0.1).timeout
 	
+	# Get player name from GameState
+	var my_name = GameState.local_player_name
+	
 	# Initialize all connected players
 	if multiplayer.is_server():
 		# Server adds itself
-		add_player(local_player_id, "Host")
+		add_player(local_player_id, my_name)
+		GameState.register_player(local_player_id, my_name, 0)
 	else:
 		# Client adds itself locally first
-		add_player(local_player_id, "Player" + str(local_player_id))
+		add_player(local_player_id, my_name)
 		
 		# Then register with server
-		register_player.rpc_id(1, local_player_id, "Player" + str(local_player_id))
+		register_player.rpc_id(1, local_player_id, my_name)
 		
 		# Request all other players from server
 		await get_tree().create_timer(0.1).timeout
 		request_player_data.rpc_id(1)
-
 
 # Called when a new player connects
 func _on_player_connected(id):
@@ -57,6 +60,9 @@ func register_player(id: int, p_name: String):
 	
 	print("Server: Registering player ", id, " with name ", p_name)
 	add_player(id, p_name)
+	
+	# Register in GameState
+	GameState.register_player(id, p_name, 0)
 	
 	# Sync this player to all clients (including the one who just joined)
 	sync_player_added.rpc(id, p_name)
@@ -138,6 +144,9 @@ func remove_player(id: int):
 func _on_local_plane_changed(player_id: int, plane_index: int):
 	# Update locally
 	player_data[local_player_id].plane_index = plane_index
+	
+	# Update GameState
+	GameState.update_player_plane(local_player_id, plane_index)
 	
 	# Sync to all other players
 	update_plane_selection.rpc(local_player_id, plane_index)
