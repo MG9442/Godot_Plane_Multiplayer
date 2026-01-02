@@ -1,4 +1,4 @@
-[gd_scene load_steps=30 format=4 uid="uid://cbq2fspigtnyy"]
+[gd_scene load_steps=32 format=4 uid="uid://cbq2fspigtnyy"]
 
 [ext_resource type="Texture2D" uid="uid://kqfvdrmsqkc6" path="res://Sprites/Objects/Basic_Plants.png" id="4_ps4mp"]
 [ext_resource type="Texture2D" uid="uid://d4crvvtabn7ck" path="res://Sprites/Objects/Basic_Grass_Biom_things.png" id="5_2dea3"]
@@ -12,6 +12,8 @@
 [ext_resource type="Texture2D" uid="uid://u1k15awgx256" path="res://Sprites/Clouds/Cloud_0.png" id="13_048jw"]
 [ext_resource type="PackedScene" uid="uid://cguasj6takqxx" path="res://Scenes/main_menu.tscn" id="14_nnvn5"]
 [ext_resource type="PackedScene" uid="uid://dvxkka4o0rybo" path="res://Scenes/network_menu.tscn" id="15_34kjm"]
+[ext_resource type="PackedScene" uid="uid://c8qk5m3xyw2pn" path="res://Scenes/Player.tscn" id="16_eeedc"]
+[ext_resource type="Texture2D" uid="uid://dj4ql7umubcsr" path="res://Sprites/Ships/ship_0000.png" id="16_pyyxn"]
 [ext_resource type="Texture2D" uid="uid://con72o1jpbwqw" path="res://Sprites/Tilesets/Water.png" id="85_duuus"]
 [ext_resource type="Texture2D" uid="uid://dpkdcq336whdg" path="res://Sprites/Tilesets/Grass.png" id="86_re31j"]
 [ext_resource type="Texture2D" uid="uid://d4j278b46fu0w" path="res://Sprites/Tilesets/Hills.png" id="87_qkyj4"]
@@ -1105,6 +1107,7 @@ script = ExtResource("12_7f2ke")
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
 [node name="TitleLabel" type="Label" parent="CanvasLayer"]
+visible = false
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
@@ -1120,6 +1123,17 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="MainMenu" parent="CanvasLayer" instance=ExtResource("14_nnvn5")]
+visible = false
 
 [node name="NetworkUI" parent="CanvasLayer" instance=ExtResource("15_34kjm")]
 visible = false
+
+[node name="Player" parent="." instance=ExtResource("16_eeedc")]
+position = Vector2(-5, -8)
+acceleration = 1000.0
+max_speed = 10000.0
+rotation_speed = 10.0
+
+[node name="Ship0000" type="Sprite2D" parent="Player"]
+rotation = 1.5708
+texture = ExtResource("16_pyyxn")

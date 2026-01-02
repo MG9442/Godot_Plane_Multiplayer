@@ -1,0 +1,39 @@
+[gd_scene load_steps=5 format=3 uid="uid://c8qk5m3xyw2pn"]
+
+[ext_resource type="Script" path="res://Scenes/Player.gd" id="1_player"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_1"]
+radius = 16.0
+
+[sub_resource type="Gradient" id="Gradient_my7q8"]
+offsets = PackedFloat32Array(0.120743, 0.424149)
+colors = PackedColorArray(1, 1, 1, 0, 0.0313726, 0.0313726, 0.0313726, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_x2gdo"]
+gradient = SubResource("Gradient_my7q8")
+
+[node name="Player" type="CharacterBody2D"]
+rotation = -1.5708
+script = ExtResource("1_player")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+scale = Vector2(2, 2)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_1")
+
+[node name="Sprite2D2" type="Sprite2D" parent="."]
+position = Vector2(-38.3695, -0.221323)
+scale = Vector2(0.198199, 7.35742)
+texture = SubResource("GradientTexture1D_x2gdo")
+
+[node name="NameLabel" type="Label" parent="."]
+offset_left = -15.9176
+offset_top = 7.00698
+offset_right = 61.0824
+offset_bottom = 27.007
+rotation = -3.1415
+theme_override_font_sizes/font_size = 8
+text = "Player"
+
+[node name="Camera2D" type="Camera2D" parent="."]
