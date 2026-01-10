@@ -1,8 +1,8 @@
 extends Camera2D
 
 # The world size we designed for (matches wrapping boundaries)
-const DESIGN_WIDTH = 1700.0/2
-const DESIGN_HEIGHT = 760.0/2
+const DESIGN_WIDTH = 1800.0/2
+const DESIGN_HEIGHT = 960.0/2
 
 # Target to follow (will be set to local player)
 var follow_target: Node2D = null
