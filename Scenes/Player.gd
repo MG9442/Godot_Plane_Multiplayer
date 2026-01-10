@@ -72,6 +72,9 @@ func _physics_process(delta: float):
 	# Move the plane
 	move_and_slide()
 	
+	# Screen wrapping
+	wrap_screen()
+	
 	# Keep UI upright
 	ui_holder.rotation = -rotation
 	
@@ -91,6 +94,53 @@ func _process(_delta: float):
 		# Send position and rotation to other players
 		rpc("update_remote_position", global_position, rotation, current_speed)
 
+func wrap_screen():
+	# Only wrap for the local player
+	if not is_multiplayer_authority():
+		return
+	
+	# Define fixed world boundaries (not based on screen size)
+	# You can adjust these to match your game world
+	var world_width = 1920.0
+	var world_height = 1080.0
+	var right_boundary = world_width / 4
+	var left_boundary = -world_width / 4
+	var bottom_boundary = world_height / 4
+	var top_boundary = -world_height / 4
+	
+	#print("Player position: ", global_position)
+	#print("Boundaries - Right: ", right_boundary, " Left: ", left_boundary)
+	#print("Boundaries - Top: ", top_boundary, " Bottom: ", bottom_boundary)
+	
+	var wrapped = false
+	
+	# Wrap horizontally
+	if global_position.x > right_boundary:
+		#print("WRAPPING RIGHT TO LEFT")
+		global_position.x = left_boundary + 10  # Small offset to prevent immediate re-wrap
+		wrapped = true
+	elif global_position.x < left_boundary:
+		#print("WRAPPING LEFT TO RIGHT")
+		global_position.x = right_boundary - 10
+		wrapped = true
+	
+	# Wrap vertically
+	if global_position.y > bottom_boundary:
+		#print("WRAPPING BOTTOM TO TOP")
+		global_position.y = top_boundary + 10
+		wrapped = true
+	elif global_position.y < top_boundary:
+		#print("WRAPPING TOP TO BOTTOM")
+		global_position.y = bottom_boundary - 10
+		wrapped = true
+	
+	# Force sync to all clients when wrapped (using reliable RPC)
+	if wrapped:
+		rpc("force_sync_position", global_position)
+
+@rpc("authority", "call_local", "reliable")
+func force_sync_position(pos: Vector2):
+	global_position = pos
 
 @rpc("unreliable")
 func update_remote_position(pos: Vector2, rot: float, speed: float):
