@@ -1130,9 +1130,9 @@ visible = false
 
 [node name="Player" parent="." instance=ExtResource("16_eeedc")]
 position = Vector2(-5, -8)
-acceleration = 1000.0
-max_speed = 10000.0
-rotation_speed = 10.0
+min_speed = 80.0
+acceleration_rate = 150.0
+rotation_speed = 5.0
 
 [node name="Ship0000" type="Sprite2D" parent="Player"]
 rotation = 1.5708

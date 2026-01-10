@@ -24,7 +24,7 @@ stretch = true
 
 [node name="SubViewport" type="SubViewport" parent="VBoxContainer/PlaneViewport"]
 transparent_bg = true
-handle_input_events = false
+handle_input_locally = false
 size = Vector2i(250, 250)
 render_target_update_mode = 4
 
