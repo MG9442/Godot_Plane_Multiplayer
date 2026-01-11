@@ -4,9 +4,6 @@ extends Camera2D
 const DESIGN_WIDTH = 1800.0/2
 const DESIGN_HEIGHT = 960.0/2
 
-# Target to follow (will be set to local player)
-var follow_target: Node2D = null
-
 
 func _ready():
 	# Adjust zoom based on screen size
@@ -14,12 +11,6 @@ func _ready():
 	
 	# Enable the camera
 	enabled = true
-
-
-func _process(_delta: float):
-	# Follow the target if set
-	if follow_target:
-		global_position = follow_target.global_position
 
 
 func adjust_zoom():
@@ -40,9 +31,3 @@ func adjust_zoom():
 	
 	# Apply zoom (Godot's zoom is a Vector2)
 	zoom = Vector2(zoom_factor, zoom_factor)
-
-
-# Call this to set which player to follow
-func set_follow_target(target: Node2D):
-	follow_target = target
-	print("Camera now following: ", target.name)
