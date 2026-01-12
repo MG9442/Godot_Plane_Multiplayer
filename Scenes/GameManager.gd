@@ -102,7 +102,7 @@ func _on_player_disconnected(id):
 
 
 # Server sends player data to clients
-@rpc("authority", "call_local", "reliable")
+@rpc("authority", "reliable")
 func sync_spawn_data(players_data: Dictionary):
 	print("Client received spawn data: ", players_data)
 	GameState.players = players_data

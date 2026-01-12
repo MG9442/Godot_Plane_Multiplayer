@@ -92,7 +92,7 @@ func shoot():
 func _process(_delta: float):
 	if is_multiplayer_authority():
 		# Send position and rotation to other players
-		rpc("update_remote_position", global_position, rotation, current_speed)
+		update_remote_position.rpc(global_position, rotation, current_speed)
 
 func wrap_screen():
 	# Only wrap for the local player
@@ -136,7 +136,7 @@ func wrap_screen():
 	
 	# Force sync to all clients when wrapped (using reliable RPC)
 	if wrapped:
-		rpc("force_sync_position", global_position)
+		force_sync_position.rpc(global_position)
 
 @rpc("authority", "call_local", "reliable")
 func force_sync_position(pos: Vector2):
