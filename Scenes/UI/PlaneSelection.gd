@@ -165,6 +165,7 @@ func update_plane_selection(player_id: int, plane_index: int):
 		# Server relays to all clients
 		if player_data.has(player_id):
 			player_data[player_id].plane_index = plane_index
+			GameState.update_player_plane(player_id, plane_index)
 			if player_cards.has(player_id):
 				player_cards[player_id].set_plane_index(plane_index)
 		

@@ -33,6 +33,7 @@ func _ready():
 	# Set up multiplayer signals for late joiners / disconnects
 	multiplayer.peer_connected.connect(_on_player_connected)
 	multiplayer.peer_disconnected.connect(_on_player_disconnected)
+	multiplayer.server_disconnected.connect(_on_server_disconnected)
 
 
 func spawn_all_players():
@@ -56,7 +57,7 @@ func _do_spawn():
 	
 	for player_id in GameState.players.keys():
 		var player_data = GameState.players[player_id]
-		spawn_player(player_id, player_data.name, player_data.plane_index)
+		spawn_player(player_id, player_data["name"], player_data["plane_index"])
 
 func spawn_player(player_id: int, player_name: String, plane_index: int):
 	print("Spawning player: ID=", player_id, " Name=", player_name, " Plane=", plane_index)
@@ -107,3 +108,17 @@ func sync_spawn_data(players_data: Dictionary):
 	print("Client received spawn data: ", players_data)
 	GameState.players = players_data
 	_do_spawn()
+
+
+# Handle server disconnect (host left)
+func _on_server_disconnected():
+	print("Server disconnected! Returning to main menu...")
+	
+	# Clear multiplayer peer
+	multiplayer.multiplayer_peer = null
+	
+	# Clear game state
+	GameState.clear_players()
+	
+	# Return to main menu
+	get_tree().change_scene_to_file("res://Scenes/UI/MainMenu.tscn")

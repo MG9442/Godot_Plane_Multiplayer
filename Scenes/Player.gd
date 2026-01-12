@@ -44,9 +44,6 @@ func setup(id: int, p_name: String, p_plane_index: int):
 	# Set name label
 	name_label.text = p_name
 	
-	# Only process input for local player
-	set_physics_process(is_multiplayer_authority())
-
 
 func _physics_process(delta: float):
 	if not is_multiplayer_authority():
@@ -148,3 +145,4 @@ func update_remote_position(pos: Vector2, rot: float, speed: float):
 		global_position = pos
 		rotation = rot
 		current_speed = speed
+		ui_holder.rotation = -rotation
