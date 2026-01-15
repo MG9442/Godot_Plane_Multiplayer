@@ -23,6 +23,14 @@ var current_speed: float = 0.0
 var active_bullets: Array = []
 var bullet_scene = preload("res://Scenes/Bullet.tscn")
 
+# UI References
+var bullet_indicators: Array = []
+
+# Health system
+@export var max_health: int = 3
+var current_health: int = 3
+var heart_indicators: Array = []
+
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var name_label: Label = $UIHolder/NameLabel
 @onready var ui_holder: Node2D = $UIHolder
@@ -38,6 +46,13 @@ func _ready():
 	
 	# Add to players group for bullet collision detection
 	add_to_group("players")
+	
+	# Setup bullet/heart UI
+	setup_bullet_ui()
+	setup_heart_ui()
+	
+	# Initialize health
+	current_health = max_health
 
 
 # Setup player with their info
@@ -108,6 +123,9 @@ func shoot():
 		game_manager.request_bullet_spawn(spawn_pos, forward_direction, player_id)
 	else:
 		print("ERROR: Could not find GameManager (Main node)")
+	
+	# Update bullet UI - grey out the next available bullet
+	update_bullet_ui()
 
 
 func spawn_bullet_local(spawn_pos: Vector2, direction: Vector2, shooter_id: int):
@@ -133,11 +151,84 @@ func spawn_bullet_local(spawn_pos: Vector2, direction: Vector2, shooter_id: int)
 		active_bullets.append(bullet)
 		bullet.tree_exiting.connect(_on_bullet_despawned.bind(bullet))
 
-
 func _on_bullet_despawned(bullet):
 	if bullet in active_bullets:
 		active_bullets.erase(bullet)
 	print(player_name, " bullet despawned. Active bullets: ", active_bullets.size(), "/", max_bullets)
+	
+	# Update bullet UI - restore color
+	update_bullet_ui()
+
+func setup_bullet_ui():
+	# Create bullet indicators in the UIHolder
+	var bullet_container = HBoxContainer.new()
+	bullet_container.name = "BulletContainer"
+	bullet_container.position = Vector2(-55, -80)  # Position above name label
+	bullet_container.add_theme_constant_override("separation", 4)
+	ui_holder.add_child(bullet_container)
+	
+	# Create individual bullet indicators
+	for i in range(max_bullets):
+		var bullet_indicator = ColorRect.new()
+		bullet_indicator.custom_minimum_size = Vector2(8, 20)
+		bullet_indicator.color = Color.YELLOW  # Available color
+		bullet_container.add_child(bullet_indicator)
+		bullet_indicators.append(bullet_indicator)
+
+func update_bullet_ui():
+	# Update bullet indicators based on active bullets count
+	print("update_bullet_ui(): bullet_indicators.size() = ", bullet_indicators.size())
+	print("update_bullet_ui(): active_bullets.size() = ", active_bullets.size())
+	for i in range(bullet_indicators.size()):
+		if i < active_bullets.size():
+			# This bullet is in use - grey it out
+			bullet_indicators[i].color = Color.DARK_GRAY
+		else:
+			# This bullet is available - show yellow
+			bullet_indicators[i].color = Color.YELLOW
+
+func setup_heart_ui():
+	# Create heart container in the UIHolder
+	var heart_container = HBoxContainer.new()
+	heart_container.name = "HeartContainer"
+	heart_container.position = Vector2(-40, -110)  # Position above bullet UI
+	heart_container.add_theme_constant_override("separation", 8)
+	ui_holder.add_child(heart_container)
+	
+	# Create heart indicators (using ColorRect for simplicity)
+	# You can replace these with heart sprites later
+	for i in range(max_health):
+		var heart = ColorRect.new()
+		heart.custom_minimum_size = Vector2(20, 20)
+		heart.color = Color.RED  # Full heart
+		heart_container.add_child(heart)
+		heart_indicators.append(heart)
+
+func take_damage(damage: int = 1):
+	if current_health <= 0:
+		return  # Already dead
+	
+	current_health -= damage
+	print(player_name, " took damage! Health: ", current_health, "/", max_health)
+	
+	# Update heart UI
+	update_heart_ui()
+	
+	# Check if dead
+	if current_health <= 0:
+		print(player_name, " died! Resetting")
+		current_health = max_health
+		update_heart_ui()
+
+func update_heart_ui():
+	# Update heart visibility based on current health
+	for i in range(heart_indicators.size()):
+		if i < current_health:
+			# Heart is full
+			heart_indicators[i].visible = true
+		else:
+			# Heart is lost
+			heart_indicators[i].visible = false
 
 # Network sync
 func _process(_delta: float):

@@ -18,6 +18,7 @@ var spawn_positions = [
 @onready var players_container = $Players
 
 var spawned_players = {}  # {player_id: Player node}
+var is_game_paused: bool = false
 
 
 func _ready():
@@ -35,6 +36,55 @@ func _ready():
 	multiplayer.peer_disconnected.connect(_on_player_disconnected)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
 
+
+func _process(_delta):
+	# Only host can pause the game
+	if multiplayer.is_server():
+		# Check for CTRL + ~ (grave key, keycode 96)
+		# Or CTRL + ~ (tilde key, keycode 126)
+		if Input.is_physical_key_pressed(KEY_CTRL) or Input.is_physical_key_pressed(KEY_CTRL):
+			if Input.is_physical_key_pressed(KEY_QUOTELEFT):  # The ` / ~ key
+				if not is_game_paused:  # Only trigger once
+					toggle_pause()
+
+func toggle_pause():
+	if not multiplayer.is_server():
+		print("Only the host can pause the game!")
+		return
+	
+	is_game_paused = !is_game_paused
+	
+	if is_game_paused:
+		pause_game()
+	else:
+		resume_game()
+	
+	# Sync pause state to all clients
+	sync_pause_state.rpc(is_game_paused)
+
+func pause_game():
+	print("Pausing game...")
+	
+	# Pause the game tree (everything except pause menu)
+	get_tree().paused = true
+
+func resume_game():
+	print("Resuming game...")
+	
+	# Resume the game tree
+	get_tree().paused = false
+
+# Server -> Clients: Sync pause state
+@rpc("authority", "reliable", "call_local")
+func sync_pause_state(paused: bool):
+	is_game_paused = paused
+	
+	if paused:
+		# Pause the game
+		get_tree().paused = true
+	else:
+		# Resume the game
+		get_tree().paused = false
 
 func spawn_all_players():
 	print("=== GameManager: Spawning all players ===")

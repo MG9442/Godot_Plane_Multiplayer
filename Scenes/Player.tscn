@@ -10,7 +10,7 @@ rotation = -1.5708
 scale = Vector2(0.3, 0.3)
 script = ExtResource("1_player")
 max_speed = 250.0
-max_bullets = 10
+max_bullets = 8
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 rotation = 1.5708

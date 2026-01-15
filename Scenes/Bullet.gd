@@ -71,7 +71,9 @@ func _on_body_entered(body):
 		# It's a player
 		if body.player_id != shooter_id:
 			print("Bullet hit enemy player: ", body.player_name)
-			# TODO: Apply damage here
+			# Apply damage to the player
+			if body.has_method("take_damage"):
+				body.take_damage(1)  # Deal 1 damage
 			despawn()
 		else:
 			print("Bullet hit own player, ignoring")
