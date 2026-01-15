@@ -122,3 +122,47 @@ func _on_server_disconnected():
 	
 	# Return to main menu
 	get_tree().change_scene_to_file("res://Scenes/UI/MainMenu.tscn")
+
+
+# ===== BULLET SPAWNING =====
+
+# Called by any player (client or server) when they want to shoot
+func request_bullet_spawn(spawn_pos: Vector2, direction: Vector2, shooter_id: int):
+	if multiplayer.is_server():
+		# Server spawns immediately and tells clients
+		spawn_bullet_everywhere(spawn_pos, direction, shooter_id)
+		spawn_bullet_on_clients.rpc(spawn_pos, direction, shooter_id)
+	else:
+		# Client requests server to spawn
+		request_bullet_from_server.rpc_id(1, spawn_pos, direction, shooter_id)
+
+
+# Client -> Server: Request to spawn a bullet
+@rpc("any_peer", "reliable")
+func request_bullet_from_server(spawn_pos: Vector2, direction: Vector2, shooter_id: int):
+	if multiplayer.is_server():
+		# Verify the request is from the actual player
+		var sender_id = multiplayer.get_remote_sender_id()
+		if sender_id == shooter_id:
+			# Spawn on server and all clients
+			spawn_bullet_everywhere(spawn_pos, direction, shooter_id)
+			spawn_bullet_on_clients.rpc(spawn_pos, direction, shooter_id)
+		else:
+			print("WARNING: Player ", sender_id, " tried to shoot as player ", shooter_id)
+
+
+# Server -> Clients: Spawn this bullet
+@rpc("authority", "reliable")
+func spawn_bullet_on_clients(spawn_pos: Vector2, direction: Vector2, shooter_id: int):
+	if not multiplayer.is_server():
+		spawn_bullet_everywhere(spawn_pos, direction, shooter_id)
+
+
+# Actually spawn the bullet locally (on server or client)
+func spawn_bullet_everywhere(spawn_pos: Vector2, direction: Vector2, shooter_id: int):
+	# Find the player node
+	if spawned_players.has(shooter_id):
+		var player = spawned_players[shooter_id]
+		player.spawn_bullet_local(spawn_pos, direction, shooter_id)
+	else:
+		print("ERROR: Could not find player ", shooter_id, " to spawn bullet")

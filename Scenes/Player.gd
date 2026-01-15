@@ -7,6 +7,10 @@ extends CharacterBody2D
 @export var deceleration_rate: float = 150.0  # How fast S slows you down
 @export var rotation_speed: float = 3.0  # How fast A/D rotates the plane
 
+# Shooting settings
+@export var max_bullets: int = 5
+@export var bullet_spawn_offset: float = 30.0  # Distance from plane center to spawn bullet
+
 # Player info
 var player_id: int = 0
 var player_name: String = "Player"
@@ -14,6 +18,10 @@ var plane_index: int = 0
 
 # Current speed
 var current_speed: float = 0.0
+
+# Bullet tracking
+var active_bullets: Array = []
+var bullet_scene = preload("res://Scenes/Bullet.tscn")
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var name_label: Label = $UIHolder/NameLabel
@@ -27,6 +35,9 @@ func _ready():
 	
 	# Start at minimum speed
 	current_speed = min_speed
+	
+	# Add to players group for bullet collision detection
+	add_to_group("players")
 
 
 # Setup player with their info
@@ -79,11 +90,54 @@ func _physics_process(delta: float):
 	if Input.is_action_just_pressed("shoot"):
 		shoot()
 
-
 func shoot():
-	# TODO: Implement shooting
-	print(player_name, " shoots!")
+	# Check if we can shoot (haven't reached max bullets)
+	if active_bullets.size() >= max_bullets:
+		print(player_name, " can't shoot - max bullets reached (", max_bullets, ")")
+		return
+	
+	print(player_name, " shoots! (", active_bullets.size() + 1, "/", max_bullets, ")")
+	
+	# Calculate bullet spawn position (in front of plane)
+	var forward_direction = Vector2.RIGHT.rotated(rotation)
+	var spawn_pos = global_position + forward_direction * bullet_spawn_offset
+	
+	# Get the Main node (which has GameManager.gd attached)
+	var game_manager = get_node("/root/Main")
+	if game_manager and game_manager.has_method("request_bullet_spawn"):
+		game_manager.request_bullet_spawn(spawn_pos, forward_direction, player_id)
+	else:
+		print("ERROR: Could not find GameManager (Main node)")
 
+
+func spawn_bullet_local(spawn_pos: Vector2, direction: Vector2, shooter_id: int):
+	# This is called by GameManager to spawn a bullet locally
+	var bullet = bullet_scene.instantiate()
+	bullet.global_position = spawn_pos
+	
+	# If the bullet scene doesn't have a collision shape, add one programmatically
+	if bullet.get_node_or_null("CollisionShape2D") == null:
+		var collision = CollisionShape2D.new()
+		var shape = RectangleShape2D.new()
+		shape.size = Vector2(8, 3)
+		collision.shape = shape
+		bullet.add_child(collision)
+	
+	bullet.setup(direction, shooter_id)
+	
+	# Add to scene tree
+	get_tree().root.add_child(bullet)
+	
+	# Track this bullet only if it's ours
+	if shooter_id == player_id:
+		active_bullets.append(bullet)
+		bullet.tree_exiting.connect(_on_bullet_despawned.bind(bullet))
+
+
+func _on_bullet_despawned(bullet):
+	if bullet in active_bullets:
+		active_bullets.erase(bullet)
+	print(player_name, " bullet despawned. Active bullets: ", active_bullets.size(), "/", max_bullets)
 
 # Network sync
 func _process(_delta: float):
