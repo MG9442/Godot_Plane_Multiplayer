@@ -191,16 +191,26 @@ func setup_heart_ui():
 	# Create heart container in the UIHolder
 	var heart_container = HBoxContainer.new()
 	heart_container.name = "HeartContainer"
-	heart_container.position = Vector2(-40, -110)  # Position above bullet UI
-	heart_container.add_theme_constant_override("separation", 8)
+	heart_container.position = Vector2(-50, -110)  # Position above bullet UI
+	heart_container.add_theme_constant_override("separation", 6)
 	ui_holder.add_child(heart_container)
 	
-	# Create heart indicators (using ColorRect for simplicity)
-	# You can replace these with heart sprites later
+	# Load heart textures
+	var heart_filled_texture = load("res://Sprites/UI/Heart_filled.png")
+	var heart_empty_texture = load("res://Sprites/UI/Heart_empty.png")
+	
+	# Create heart indicators using TextureRect
 	for i in range(max_health):
-		var heart = ColorRect.new()
-		heart.custom_minimum_size = Vector2(20, 20)
-		heart.color = Color.RED  # Full heart
+		var heart = TextureRect.new()
+		heart.texture = heart_filled_texture
+		heart.custom_minimum_size = Vector2(25, 21)  # Match your sprite size
+		heart.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		heart.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		
+		# Store reference to empty texture for later use
+		heart.set_meta("filled_texture", heart_filled_texture)
+		heart.set_meta("empty_texture", heart_empty_texture)
+		
 		heart_container.add_child(heart)
 		heart_indicators.append(heart)
 
@@ -224,11 +234,11 @@ func update_heart_ui():
 	# Update heart visibility based on current health
 	for i in range(heart_indicators.size()):
 		if i < current_health:
-			# Heart is full
-			heart_indicators[i].visible = true
+			# Heart is full - show filled texture
+			heart_indicators[i].texture = heart_indicators[i].get_meta("filled_texture")
 		else:
-			# Heart is lost
-			heart_indicators[i].visible = false
+			# Heart is lost - show empty texture
+			heart_indicators[i].texture = heart_indicators[i].get_meta("empty_texture")
 
 # Network sync
 func _process(_delta: float):
