@@ -73,16 +73,20 @@ func _on_body_entered(body):
 			print("Bullet hit enemy player: ", body.player_name)
 			# Apply damage to the player
 			if body.has_method("take_damage"):
-				var was_killed = body.take_damage(1)  # Deal 1 damage
-
-				# If the player was killed, register the kill
-				if was_killed:
-					print("Player ", shooter_id, " killed player ", body.player_id)
-					# Get GameManager and register the kill
-					var game_manager = get_tree().get_root().get_node("Main")
-					if game_manager and game_manager.has_method("register_kill"):
-						game_manager.register_kill(shooter_id, body.player_id)
-			despawn()
+				# Only process damage and kills on the server or in single-player
+				if multiplayer.is_server() or not multiplayer.has_multiplayer_peer():
+					var was_killed = body.take_damage(1)  # Deal 1 damage
+					
+					# If the player was killed, register the kill
+					if was_killed:
+						print("Player ", shooter_id, " killed player ", body.player_id)
+						# Get GameManager and register the kill
+						var game_manager = get_tree().get_root().get_node("Main")
+						if game_manager and game_manager.has_method("register_kill"):
+							game_manager.register_kill(shooter_id, body.player_id)
+				
+				# Despawn the bullet (happens on all peers)
+				despawn()
 		else:
 			print("Bullet hit own player, ignoring")
 	else:

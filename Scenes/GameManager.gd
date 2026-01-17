@@ -207,10 +207,30 @@ func request_kill_from_server(killer_id: int, victim_id: int):
 # Server -> Clients: Sync kill count update
 @rpc("authority", "reliable")
 func sync_kill_to_clients(killer_id: int):
-	# Update the killer's UI on all clients
+	# FIRST update the client's GameState
+	GameState.add_kill(killer_id)
+	
+	# THEN update the killer's UI on all clients
 	if spawned_players.has(killer_id):
 		spawned_players[killer_id].update_kill_display()
 
+# ===== HEALTH SYNCING =====
+
+# Sync a player's health change to all clients
+func sync_player_health(player_id: int, new_health: int):
+	if multiplayer.is_server():
+		# Server updates locally and syncs to clients
+		if spawned_players.has(player_id):
+			spawned_players[player_id].set_health(new_health)
+		sync_health_to_clients.rpc(player_id, new_health)
+	# Clients don't call this directly
+
+# Server -> Clients: Sync health update
+@rpc("authority", "reliable")
+func sync_health_to_clients(player_id: int, new_health: int):
+	# Update the player's health on all clients
+	if spawned_players.has(player_id):
+		spawned_players[player_id].set_health(new_health)
 
 # ===== BULLET SPAWNING =====
 

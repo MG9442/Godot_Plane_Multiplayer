@@ -38,7 +38,7 @@ var kill_container:HBoxContainer = null
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var name_label: Label = $UIHolder/NameLabel
 @onready var ui_holder: Node2D = $UIHolder
-
+@onready var respawn_timer: Timer = $RespawnTimer
 
 func _ready():
 	# Set the collision layer/mask
@@ -58,6 +58,9 @@ func _ready():
 
 	# Initialize health
 	current_health = max_health
+	
+	# Setup respawn timer
+	respawn_timer.timeout.connect(_do_respawn)
 
 
 # Setup player with their info
@@ -256,20 +259,48 @@ func take_damage(damage: int = 1) -> bool:
 	if current_health <= 0:
 		return false  # Already dead
 
+	var previous_health = current_health
 	current_health -= damage
-	print(player_name, " took damage! Health: ", current_health, "/", max_health)
+	print(player_name, " took damage! Health: ", previous_health, " -> ", current_health, "/", max_health)
 
-	# Update heart UI
+	# Update heart UI locally
 	update_heart_ui()
+	
+	# Sync health change through GameManager (only on server)
+	if multiplayer.is_server() or not multiplayer.has_multiplayer_peer():
+		var game_manager = get_tree().get_root().get_node("Main")
+		if game_manager and game_manager.has_method("sync_player_health"):
+			game_manager.sync_player_health(player_id, current_health)
 
-	# Check if dead
-	if current_health <= 0:
-		print(player_name, " died! Resetting")
-		current_health = max_health
-		update_heart_ui()
-		return true  # Player was killed
+	if current_health <= 0 and previous_health > 0:
+		print(player_name, " was KILLED! Previous health: ", previous_health, ", new health: ", current_health)
+		# Don't respawn immediately - use a short delay or defer the respawn
+		# This prevents race conditions with multiple bullets
+		call_deferred("_respawn_player")
+		return true
 
 	return false  # Player survived
+
+func _respawn_player():
+	# Start the respawn timer
+	if respawn_timer:
+		respawn_timer.start()
+
+func _do_respawn():
+	current_health = max_health
+	update_heart_ui()
+	print(player_name, " respawned with ", current_health, " health")
+	
+	# Sync respawn through GameManager
+	if multiplayer.is_server() or not multiplayer.has_multiplayer_peer():
+		var game_manager = get_tree().get_root().get_node("Main")
+		if game_manager and game_manager.has_method("sync_player_health"):
+			game_manager.sync_player_health(player_id, current_health)
+
+func set_health(new_health: int):
+	current_health = new_health
+	update_heart_ui()
+	print(player_name, " health set to: ", current_health)
 
 func update_heart_ui():
 	# Update heart visibility based on current health
