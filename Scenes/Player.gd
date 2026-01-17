@@ -31,6 +31,9 @@ var bullet_indicators: Array = []
 var current_health: int = 3
 var heart_indicators: Array = []
 
+# Kill tracking UI
+var kill_label: Label = null
+
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var name_label: Label = $UIHolder/NameLabel
 @onready var ui_holder: Node2D = $UIHolder
@@ -50,7 +53,8 @@ func _ready():
 	# Setup bullet/heart UI
 	setup_bullet_ui()
 	setup_heart_ui()
-	
+	setup_kill_ui()
+
 	# Initialize health
 	current_health = max_health
 
@@ -214,21 +218,55 @@ func setup_heart_ui():
 		heart_container.add_child(heart)
 		heart_indicators.append(heart)
 
-func take_damage(damage: int = 1):
+func setup_kill_ui():
+	# Create a container for the kill display (star icon + number)
+	var kill_container = HBoxContainer.new()
+	kill_container.name = "KillContainer"
+	kill_container.position = Vector2(-12, 60)  # Position below the plane sprite
+	kill_container.add_theme_constant_override("separation", 2)
+	ui_holder.add_child(kill_container)
+
+	# Load and add star icon
+	var star_texture = load("res://Sprites/UI/Star_icon.png")
+	var star_icon = TextureRect.new()
+	star_icon.texture = star_texture
+	star_icon.custom_minimum_size = Vector2(25, 25)  # Match your 25x25 pixel icon
+	star_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	star_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	kill_container.add_child(star_icon)
+
+	# Add kill count label
+	kill_label = Label.new()
+	kill_label.text = "0"
+	kill_label.add_theme_font_size_override("font_size", 20)
+	kill_label.add_theme_color_override("font_color", Color.YELLOW)
+	kill_container.add_child(kill_label)
+
+func update_kill_display():
+	# Update the kill count label with the current player's kill count
+	var kills = GameState.get_kills(player_id)
+	if kill_label:
+		kill_label.text = str(kills)
+		print(player_name, " kill display updated: ", kills)
+
+func take_damage(damage: int = 1) -> bool:
 	if current_health <= 0:
-		return  # Already dead
-	
+		return false  # Already dead
+
 	current_health -= damage
 	print(player_name, " took damage! Health: ", current_health, "/", max_health)
-	
+
 	# Update heart UI
 	update_heart_ui()
-	
+
 	# Check if dead
 	if current_health <= 0:
 		print(player_name, " died! Resetting")
 		current_health = max_health
 		update_heart_ui()
+		return true  # Player was killed
+
+	return false  # Player survived
 
 func update_heart_ui():
 	# Update heart visibility based on current health

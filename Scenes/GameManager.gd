@@ -174,6 +174,44 @@ func _on_server_disconnected():
 	get_tree().change_scene_to_file("res://Scenes/UI/MainMenu.tscn")
 
 
+# ===== KILL TRACKING =====
+
+# Called when a player kills another player
+func register_kill(killer_id: int, victim_id: int):
+	if multiplayer.is_server():
+		# Server updates GameState and syncs to all clients
+		GameState.add_kill(killer_id)
+		sync_kill_to_clients.rpc(killer_id)
+
+		# Update the killer's UI
+		if spawned_players.has(killer_id):
+			spawned_players[killer_id].update_kill_display()
+	else:
+		# Client requests server to register the kill
+		request_kill_from_server.rpc_id(1, killer_id, victim_id)
+
+# Client -> Server: Request to register a kill
+@rpc("any_peer", "reliable")
+func request_kill_from_server(killer_id: int, victim_id: int):
+	if multiplayer.is_server():
+		# Update GameState
+		GameState.add_kill(killer_id)
+
+		# Sync to all clients
+		sync_kill_to_clients.rpc(killer_id)
+
+		# Update the killer's UI on server
+		if spawned_players.has(killer_id):
+			spawned_players[killer_id].update_kill_display()
+
+# Server -> Clients: Sync kill count update
+@rpc("authority", "reliable")
+func sync_kill_to_clients(killer_id: int):
+	# Update the killer's UI on all clients
+	if spawned_players.has(killer_id):
+		spawned_players[killer_id].update_kill_display()
+
+
 # ===== BULLET SPAWNING =====
 
 # Called by any player (client or server) when they want to shoot

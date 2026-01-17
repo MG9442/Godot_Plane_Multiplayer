@@ -15,7 +15,8 @@ func _ready():
 func register_player(id: int, p_name: String, plane_index: int = 0):
 	players[id] = {
 		"name": p_name,
-		"plane_index": plane_index
+		"plane_index": plane_index,
+		"kills": 0
 	}
 	print("GameState: Registered player ", id, " - ", p_name, " - Plane #", plane_index)
 
@@ -34,6 +35,18 @@ func get_player_name(id: int) -> String:
 func get_player_plane(id: int) -> int:
 	if players.has(id):
 		return players[id].plane_index
+	return 0
+
+# Increment player's kill count
+func add_kill(id: int):
+	if players.has(id):
+		players[id].kills += 1
+		print("GameState: Player ", id, " now has ", players[id].kills, " kills")
+
+# Get player's kill count
+func get_kills(id: int) -> int:
+	if players.has(id):
+		return players[id].kills
 	return 0
 
 # Clear all player data (for disconnecting/returning to menu)

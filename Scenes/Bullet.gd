@@ -66,14 +66,22 @@ func despawn():
 func _on_body_entered(body):
 	# Handle collision with CharacterBody2D (players)
 	print("Bullet collided with body: ", body.name)
-	
+
 	if body.has_method("get") and body.get("player_id") != null:
 		# It's a player
 		if body.player_id != shooter_id:
 			print("Bullet hit enemy player: ", body.player_name)
 			# Apply damage to the player
 			if body.has_method("take_damage"):
-				body.take_damage(1)  # Deal 1 damage
+				var was_killed = body.take_damage(1)  # Deal 1 damage
+
+				# If the player was killed, register the kill
+				if was_killed:
+					print("Player ", shooter_id, " killed player ", body.player_id)
+					# Get GameManager and register the kill
+					var game_manager = get_tree().get_root().get_node("Main")
+					if game_manager and game_manager.has_method("register_kill"):
+						game_manager.register_kill(shooter_id, body.player_id)
 			despawn()
 		else:
 			print("Bullet hit own player, ignoring")
