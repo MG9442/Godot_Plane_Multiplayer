@@ -33,6 +33,7 @@ var heart_indicators: Array = []
 
 # Kill tracking UI
 var kill_label: Label = null
+var kill_container:HBoxContainer = null
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var name_label: Label = $UIHolder/NameLabel
@@ -167,7 +168,7 @@ func setup_bullet_ui():
 	# Create bullet indicators in the UIHolder
 	var bullet_container = HBoxContainer.new()
 	bullet_container.name = "BulletContainer"
-	bullet_container.position = Vector2(-55, -80)  # Position above name label
+	bullet_container.position = Vector2(-55, -90)  # Position above name label
 	bullet_container.add_theme_constant_override("separation", 4)
 	ui_holder.add_child(bullet_container)
 	
@@ -195,7 +196,7 @@ func setup_heart_ui():
 	# Create heart container in the UIHolder
 	var heart_container = HBoxContainer.new()
 	heart_container.name = "HeartContainer"
-	heart_container.position = Vector2(-50, -110)  # Position above bullet UI
+	heart_container.position = Vector2(-50, -120)  # Position above bullet UI
 	heart_container.add_theme_constant_override("separation", 6)
 	ui_holder.add_child(heart_container)
 	
@@ -220,10 +221,10 @@ func setup_heart_ui():
 
 func setup_kill_ui():
 	# Create a container for the kill display (star icon + number)
-	var kill_container = HBoxContainer.new()
+	kill_container = HBoxContainer.new()
 	kill_container.name = "KillContainer"
-	kill_container.position = Vector2(-12, 60)  # Position below the plane sprite
-	kill_container.add_theme_constant_override("separation", 2)
+	kill_container.position = Vector2(-50, 60)  # Position below the plane sprite
+	kill_container.add_theme_constant_override("separation", 20)
 	ui_holder.add_child(kill_container)
 
 	# Load and add star icon
@@ -234,18 +235,20 @@ func setup_kill_ui():
 	star_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	star_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	kill_container.add_child(star_icon)
+	kill_container.visible = false
 
 	# Add kill count label
 	kill_label = Label.new()
 	kill_label.text = "0"
-	kill_label.add_theme_font_size_override("font_size", 20)
-	kill_label.add_theme_color_override("font_color", Color.YELLOW)
+	kill_label.add_theme_font_size_override("font_size", 30)
+	kill_label.add_theme_color_override("font_color", Color.BLACK)
 	kill_container.add_child(kill_label)
 
 func update_kill_display():
 	# Update the kill count label with the current player's kill count
 	var kills = GameState.get_kills(player_id)
-	if kill_label:
+	if kill_label and kills > 0:
+		kill_container.visible = true
 		kill_label.text = str(kills)
 		print(player_name, " kill display updated: ", kills)
 
