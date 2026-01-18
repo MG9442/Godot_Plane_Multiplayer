@@ -7,6 +7,15 @@ var local_player_id: int = 0
 # All players data {player_id: {name: "", plane_index: 0}}
 var players: Dictionary = {}
 
+# Game settings (set by host in lobby)
+var game_mode: int = 0 # Free-for-All
+var round_duration_minutes: int = 1
+var num_rounds: int = 5
+
+# Round tracking (will be used during gameplay)
+var current_round: int = 0
+var round_winners: Array = [] # Array of arrays: [[winner_ids...],[winner_ids...], ...]
+
 # Called when node enters scene tree
 func _ready():
 	pass

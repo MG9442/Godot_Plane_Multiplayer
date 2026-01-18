@@ -36,7 +36,7 @@ Frequent Fighters is a multiplayer plane combat game built in Godot. This spec c
 - Timer starts when round begins
 - When timer reaches 0, round ends immediately (no grace period)
 - Timer should be visible to all players (UI element)
-- Respawn system polishing (Remove player ability to shoot during respawn time)
+- Respawn system polishing (Remove player ability to shoot during 1 second respawn timer)
 
 **Technical Notes:**
 - Timer needs to be synchronized across all clients in multiplayer
@@ -72,29 +72,33 @@ var total_kills = 0  # Cumulative kills across all rounds
 ### 4. Ability Selection Screen
 
 **Trigger Conditions:**
-- After each normal round (rounds 1 through N-1)
-- After final round, skip ability selection
+- After each normal round (rounds 1 through N-2)
+- Before the final round (round N-1), ALL players choose from OVERPOWERED abilities
+- After final round, skip ability selection (proceed to tiebreaker logic if needed)
 - NO ability selection during tiebreaker rounds
 
 **Screen Elements:**
 - 30 second countdown timer
 - Display three random abilities from given tier which each player picks from
-- Once an ability is chosen, it will not appear in subsequent rounds (except for stackable abilities)
+- Once an ability is chosen by a player, it will not appear in that player's subsequent selections (except for stackable abilities)
 - Horizontal list of available abilities with descriptions
 - Visual feedback when ability is selected
 - "Locked in" indicator when player confirms choice
 
 **Selection Logic:**
 ```
-IF current_round < final_round:
+IF current_round < (final_round - 1):
     IF player won the round (or tied for most kills):
         Display RARE abilities
     ELSE:
         Display BASIC abilities
-        
+
+IF current_round == (final_round - 1):
+    ALL players display OVERPOWERED abilities (before final round starts)
+
 IF current_round == final_round:
-    ALL players display OVERPOWERED abilities
-    
+    NO ability selection (skip this screen, proceed to winner check)
+
 IF in_tiebreaker_round:
     NO ability selection (skip this screen entirely)
 ```
@@ -264,15 +268,15 @@ ABILITY_SELECTION (30 sec, tier based on round performance)
     ↓
 ROUND_2_START
     ↓
-... (repeat for rounds 2 through N-1)
+... (repeat for rounds 2 through N-2)
+    ↓
+ABILITY_SELECTION (ALL players choose OVERPOWERED abilities before final round)
     ↓
 FINAL_ROUND_START
     ↓
 FINAL_ROUND_COMBAT
     ↓
 FINAL_ROUND_END
-    ↓
-ABILITY_SELECTION (ALL players choose OVERPOWERED)
     ↓
 CHECK_WINNER
     ↓
@@ -439,7 +443,7 @@ VICTORY_SCREEN (show overall winner)
 
 ## Technical Constraints
 
-**Godot Version:** (Specify your version)
+**Godot Version:** 4.3
 **Networking:** Godot's built-in high-level multiplayer
 **Language:** GDScript
 **Existing Systems to Integrate:**

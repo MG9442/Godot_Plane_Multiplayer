@@ -6,6 +6,12 @@ const PlayerSelectionCard = preload("res://Scenes/UI/PlayerSelectionCard.tscn")
 @onready var ready_button = $ReadyButton
 @onready var status_label = $StatusLabel
 
+# Reference to UI nodes
+@onready var game_mode_option: OptionButton = $GameSettingsPanel/MarginContainer/VBoxContainer/GameMode/GameModeOption
+@onready var round_timer_spin: SpinBox = $GameSettingsPanel/MarginContainer/VBoxContainer/RoundTimer/RoundTimerSpin
+@onready var num_rounds_spin: SpinBox = $GameSettingsPanel/MarginContainer/VBoxContainer/NumofRounds/NumRoundsSpin
+@onready var game_settings_panel: PanelContainer = $GameSettingsPanel
+
 # Track player selections and ready states
 var player_data = {}  # {player_id: {name: "", plane_index: 0, is_ready: false}}
 var player_cards = {}  # {player_id: PlayerSelectionCard}
@@ -41,6 +47,9 @@ func _ready():
 		# Request all other players from server
 		await get_tree().create_timer(0.1).timeout
 		request_player_data.rpc_id(1)
+	
+	# Initialize game settings UI
+	setup_game_settings()
 
 # Called when a new player connects
 func _on_player_connected(id):
@@ -283,3 +292,60 @@ func start_game():
 	# Or you can pass it via a custom scene initialization
 	
 	get_tree().change_scene_to_file("res://Scenes/Main.tscn")
+
+func setup_game_settings():
+	# Only the server (host) can change these settings
+	var is_host = multiplayer.is_server()
+	
+	# Disable controls for clients
+	game_mode_option.disabled = not is_host
+	round_timer_spin.editable = is_host
+	num_rounds_spin.editable = is_host
+	
+	# Set initial values from GameState defaults
+	game_mode_option.selected = 0 # Free-for-All
+	round_timer_spin.value = GameState.round_duration_minutes
+	num_rounds_spin.value = GameState.num_rounds
+	
+	# Connect signals (only host needs to send updates)
+	if is_host:
+		game_mode_option.item_selected.connect(_on_game_mode_changed)
+		round_timer_spin.value_changed.connect(_on_round_timer_changed)
+		num_rounds_spin.value_changed.connect(_on_num_rounds_changed)
+	
+	
+func _on_game_mode_changed(index: int):
+		# Update local GameState
+		GameState.game_mode = index
+		
+		# Sync to all clients
+		sync_game_settings.rpc(index, round_timer_spin.value, num_rounds_spin.value)
+
+func _on_round_timer_changed(value: int):
+	# Update local GameState
+	GameState.round_duration_minutes = int(value)
+	
+	# Sync to all clients
+	sync_game_settings.rpc(game_mode_option.selected, value, num_rounds_spin.value)
+
+func _on_num_rounds_changed(value: int):
+	# Update local GameState
+	GameState.num_rounds = value
+	
+	# Sync to all clients
+	sync_game_settings.rpc(game_mode_option.selected, round_timer_spin.value, value)
+
+#RPC to sync settings from server -> clients
+@rpc("authority", "call_remote", "reliable")
+func sync_game_settings(mode: int, timer: int, rounds: int):
+	# Update GameState on client
+	GameState.game_mode = mode
+	GameState.round_duration_minutes = timer
+	GameState.num_rounds = rounds
+	
+	# Update UI to match
+	game_mode_option.selected = game_mode_option.get_item_index(mode)
+	round_timer_spin.value = timer
+	num_rounds_spin.value = rounds
+	
+	print("[Client] Game settings updated: Mode =%s, Timer=%d min, Rounds=%d" % [game_mode_option.get_item_text(mode), timer, rounds])
