@@ -5,6 +5,7 @@ const PlayerSelectionCard = preload("res://Scenes/UI/PlayerSelectionCard.tscn")
 @onready var player_container = $ScrollContainer/PlayerContainer
 @onready var ready_button = $ReadyButton
 @onready var status_label = $StatusLabel
+@onready var server_container = $ServerContainer
 
 # Reference to UI nodes
 @onready var game_mode_option: OptionButton = $GameSettingsPanel/MarginContainer/VBoxContainer/GameMode/GameModeOption
@@ -37,6 +38,7 @@ func _ready():
 		# Server adds itself
 		add_player(local_player_id, my_name)
 		GameState.register_player(local_player_id, my_name, 0)
+		server_container.visible = true
 	else:
 		# Client adds itself locally first
 		add_player(local_player_id, my_name)

@@ -83,6 +83,7 @@ func _on_join_button_pressed():
 	# Disable buttons and show status
 	host_button.disabled = true
 	join_button.disabled = true
+	start_button.disabled = true
 	status_label.text = "Connecting to " + ip + "..."
 	status_label.add_theme_color_override("font_color", Color.YELLOW)
 	
