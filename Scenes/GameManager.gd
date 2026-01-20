@@ -35,6 +35,11 @@ func _ready():
 	multiplayer.peer_connected.connect(_on_player_connected)
 	multiplayer.peer_disconnected.connect(_on_player_disconnected)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
+	
+	# Start round 1 after players spawn
+	if multiplayer.is_server():
+		await get_tree().create_timer(2.0).timeout # Give time for players to load
+		$RoundManager.start_round()
 
 
 func _process(_delta):

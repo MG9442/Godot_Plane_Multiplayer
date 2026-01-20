@@ -30,6 +30,7 @@ var bullet_indicators: Array = []
 @export var max_health: int = 3
 var current_health: int = 3
 var heart_indicators: Array = []
+var is_respawning: bool = false
 
 # Kill tracking UI
 var kill_label: Label = null
@@ -110,15 +111,19 @@ func _physics_process(delta: float):
 	ui_holder.rotation = -rotation
 	
 	# Shooting
-	if Input.is_action_just_pressed("shoot"):
+	if Input.is_action_just_pressed("shoot") and not is_respawning:
 		shoot()
 
 func shoot():
+	# Can't shoot while respawning
+	if is_respawning:
+		return
+
 	# Check if we can shoot (haven't reached max bullets)
 	if active_bullets.size() >= max_bullets:
 		print(player_name, " can't shoot - max bullets reached (", max_bullets, ")")
 		return
-	
+
 	print(player_name, " shoots! (", active_bullets.size() + 1, "/", max_bullets, ")")
 	
 	# Calculate bullet spawn position (in front of plane)
@@ -257,6 +262,12 @@ func update_kill_display():
 
 func take_damage(damage: int = 1) -> bool:
 	if current_health <= 0:
+		# If we're already dead but haven't started respawning, trigger it now
+		if not is_respawning and is_multiplayer_authority():
+			is_respawning = true
+			visible = false
+			sync_visibility.rpc(false)
+			call_deferred("_respawn_player")
 		return false  # Already dead
 
 	var previous_health = current_health
@@ -265,7 +276,7 @@ func take_damage(damage: int = 1) -> bool:
 
 	# Update heart UI locally
 	update_heart_ui()
-	
+
 	# Sync health change through GameManager (only on server)
 	if multiplayer.is_server() or not multiplayer.has_multiplayer_peer():
 		var game_manager = get_tree().get_root().get_node("Main")
@@ -274,28 +285,55 @@ func take_damage(damage: int = 1) -> bool:
 
 	if current_health <= 0 and previous_health > 0:
 		print(player_name, " was KILLED! Previous health: ", previous_health, ", new health: ", current_health)
-		# Don't respawn immediately - use a short delay or defer the respawn
-		# This prevents race conditions with multiple bullets
-		call_deferred("_respawn_player")
+
+		# Only the authority (owner of this player) handles respawn logic
+		if is_multiplayer_authority():
+			is_respawning = true
+			visible = false  # Hide locally immediately
+			sync_visibility.rpc(false)  # Tell others to hide us
+			# Don't respawn immediately - use a short delay or defer the respawn
+			# This prevents race conditions with multiple bullets
+			call_deferred("_respawn_player")
+
 		return true
 
 	return false  # Player survived
 
 func _respawn_player():
+	# Only the player with authority should start the respawn timer
+	if not is_multiplayer_authority():
+		return
+
+	print(player_name, " starting respawn timer")
+
 	# Start the respawn timer
 	if respawn_timer:
 		respawn_timer.start()
+	else:
+		print("ERROR: respawn_timer not found!")
 
 func _do_respawn():
-	current_health = max_health
-	update_heart_ui()
-	print(player_name, " respawned with ", current_health, " health")
-	
-	# Sync respawn through GameManager
-	if multiplayer.is_server() or not multiplayer.has_multiplayer_peer():
-		var game_manager = get_tree().get_root().get_node("Main")
-		if game_manager and game_manager.has_method("sync_player_health"):
-			game_manager.sync_player_health(player_id, current_health)
+	# Only the player with authority should handle respawn logic
+	if not is_multiplayer_authority():
+		return
+
+	print(player_name, " executing respawn!")
+
+	# Respawn at a new random position
+	var spawn_positions = [
+		Vector2(0, -200), Vector2(200, 0), Vector2(0, 200), Vector2(-200, 0),
+		Vector2(150, -150), Vector2(150, 150), Vector2(-150, 150), Vector2(-150, -150)
+	]
+	var new_position = spawn_positions.pick_random()
+
+	# Apply respawn locally first
+	global_position = new_position
+	visible = true
+	set_health(max_health)
+	is_respawning = false
+
+	# Sync to everyone (including ourselves via call_local)
+	sync_respawn.rpc(new_position, max_health)
 
 func set_health(new_health: int):
 	current_health = new_health
@@ -361,6 +399,19 @@ func wrap_screen():
 	# Force sync to all clients when wrapped (using reliable RPC)
 	if wrapped:
 		force_sync_position.rpc(global_position)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sync_respawn(new_pos: Vector2, new_health: int):
+	# This syncs the respawn to everyone EXCEPT the caller (they already did it locally)
+	global_position = new_pos
+	visible = true
+	set_health(new_health)
+	is_respawning = false
+	print(player_name, " received respawn sync at position: ", new_pos)
+
+@rpc("authority", "call_local", "reliable")
+func sync_visibility(visibleValue: bool):
+	visible = visibleValue
 
 @rpc("authority", "call_local", "reliable")
 func force_sync_position(pos: Vector2):

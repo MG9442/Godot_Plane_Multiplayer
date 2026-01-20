@@ -33,4 +33,5 @@ text = "Player"
 horizontal_alignment = 1
 
 [node name="RespawnTimer" type="Timer" parent="."]
+wait_time = 5.0
 one_shot = true

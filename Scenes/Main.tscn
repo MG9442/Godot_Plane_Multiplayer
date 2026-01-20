@@ -1,7 +1,9 @@
-[gd_scene load_steps=30 format=4 uid="uid://cbq2fspigtnyy"]
+[gd_scene load_steps=32 format=4 uid="uid://cbq2fspigtnyy"]
 
 [ext_resource type="Script" path="res://Scenes/CameraController.gd" id="1_65b5w"]
 [ext_resource type="Script" path="res://Scenes/GameManager.gd" id="1_c3olv"]
+[ext_resource type="Script" path="res://Scenes/RoundManager.gd" id="2_mkhqu"]
+[ext_resource type="Script" path="res://Scenes/RoundUI.gd" id="2_q3h2k"]
 [ext_resource type="Texture2D" uid="uid://kqfvdrmsqkc6" path="res://Sprites/Objects/Basic_Plants.png" id="4_ps4mp"]
 [ext_resource type="Texture2D" uid="uid://d4crvvtabn7ck" path="res://Sprites/Objects/Basic_Grass_Biom_things.png" id="5_2dea3"]
 [ext_resource type="Texture2D" uid="uid://c8870elc7nw4i" path="res://Sprites/Objects/Wood_Bridge.png" id="6_uxxwv"]
@@ -900,6 +902,36 @@ sources/11 = SubResource("TileSetAtlasSource_kk7mk")
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_c3olv")
+
+[node name="RoundUI" type="CanvasLayer" parent="."]
+visible = false
+script = ExtResource("2_q3h2k")
+
+[node name="MarginContainer" type="MarginContainer" parent="RoundUI"]
+offset_right = 148.0
+offset_bottom = 113.0
+theme_override_constants/margin_left = 30
+theme_override_constants/margin_top = 30
+
+[node name="VBoxContainer" type="VBoxContainer" parent="RoundUI/MarginContainer"]
+layout_mode = 2
+
+[node name="RoundLabel" type="Label" parent="RoundUI/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 24
+text = "Round 1/5"
+horizontal_alignment = 1
+
+[node name="TimerLabel" type="Label" parent="RoundUI/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 32
+text = "1:00"
+horizontal_alignment = 1
+
+[node name="RoundManager" type="Node" parent="."]
+script = ExtResource("2_mkhqu")
 
 [node name="Players" type="Node2D" parent="."]
 
