@@ -20,6 +20,11 @@ var spawn_positions = [
 var spawned_players = {}  # {player_id: Player node}
 var is_game_paused: bool = false
 
+# Server-authoritative health and respawn tracking
+var player_health: Dictionary = {} # {player_id: current_health}
+var player_max_health: Dictionary = {} # {player_id: max_health}
+var player_respawn_state: Dictionary = {} # {player_id: {is_dead: bool, respawn_timer: float}}
+var respawn_delay: float = 3.0 # Time before respawn in seconds
 
 func _ready():
 	print("GameManager _ready() called")
@@ -43,6 +48,10 @@ func _ready():
 
 
 func _process(_delta):
+	# Server handles respawn countdowns
+	if multiplayer.is_server():
+		process_respawns(_delta)
+	
 	# Only host can pause the game
 	if multiplayer.is_server():
 		# Check for CTRL + ~ (grave key, keycode 96)
@@ -137,8 +146,135 @@ func spawn_player(player_id: int, player_name: String, plane_index: int):
 	# Store reference
 	spawned_players[player_id] = player
 	
-	print("Player spawned successfully: ", player_name)
+	# Initialize server health tracking
+	if multiplayer.is_server():
+		player_max_health[player_id] = player.max_health
+		player_health[player_id] = player_max_health[player_id]
+		player_respawn_state[player_id] = {"is_dead": false, "respawn_timer": 0.0}
+		print("Server initialized health for player ", player_id, ": ", player_health[player_id])
 
+# ===== DAMAGE PROCESSING (Server Only) =====
+
+# Process damage on server - single source of truth
+func process_damage(victim_id: int, shooter_id: int, damage: int = 1):
+	# This function should ONLY run on the server
+	if not multiplayer.is_server():
+		print("ERROR: process_damage called on client!")
+		return
+	
+	# Check if victim exists and is alive
+	if not player_health.has(victim_id):
+		print("ERROR: Victim ", victim_id, " not found in health tracking")
+		return
+	
+	if player_respawn_state[victim_id]["is_dead"]:
+		print("Victim ", victim_id, " is already dead, ignoring damage")
+		return
+	
+	# Apply damage to server's health tracking
+	var previous_health = player_health[victim_id]
+	player_health[victim_id] -= damage
+	
+	print("Server: Player ", victim_id, " took ", damage, " damage. Health ", previous_health, " -> ", player_health[victim_id])
+	
+	# Sync health update to all clients (including visual update)
+	if spawned_players.has(victim_id):
+		spawned_players[victim_id].take_damage(damage)
+		sync_health_to_clients.rpc(victim_id, player_health[victim_id])
+	
+	# Check for death
+	if player_health[victim_id] <= 0 and previous_health > 0:
+		print("Server: Player ", victim_id, " DIED! Killed by player ", shooter_id)
+		
+		# Mark as dead
+		player_respawn_state[victim_id]["is_dead"] = true
+		player_respawn_state[victim_id]["respawn_timer"] = respawn_delay
+		
+		# Register the kill
+		GameState.add_kill(shooter_id)
+		sync_kill_to_clients.rpc(shooter_id)
+		
+		# Update killer's UI
+		if spawned_players.has(shooter_id):
+			spawned_players[shooter_id].update_kill_display()
+		
+		# Hide the dead player on all clients
+		if spawned_players.has(victim_id):
+			spawned_players[victim_id].sync_player_state.rpc(
+				spawned_players[victim_id].global_position, # Keep current position
+				0,  # Health is 0 (dead)
+				false,  # Not visible
+				true  # Is dead/respawning
+			)
+
+# ===== RESPAWN SYSTEM (Server Only) =====
+
+# Process respawn timers (Server Only)
+func process_respawns(delta: float):
+	# Only server processes respawns
+	if not multiplayer.is_server():
+		return
+	
+	# Loop through all players and check their respawn state
+	for player_id in player_respawn_state.keys():
+		var state = player_respawn_state[player_id]
+		
+		# If player is dead and has a respawn timer
+		if state["is_dead"] and state["respawn_timer"] > 0:
+			# Count down the timer
+			state["respawn_timer"] -= delta
+			
+			# Check if timer expired
+			if state["respawn_timer"] <= 0:
+				execute_respawn(player_id)
+
+# Execute respawn for a player (Server Only)
+func execute_respawn(player_id: int):
+	if not multiplayer.is_server():
+		return
+	
+	print("Server: Executing respawn for player ", player_id)
+	
+	# Pick a random spawn point
+	var new_position = spawn_positions.pick_random()
+	
+	# Reset health on server
+	player_health[player_id] = player_max_health[player_id]
+	player_respawn_state[player_id]["is_dead"] = false
+	player_respawn_state[player_id]["respawn_timer"] = 0.0
+	
+	# Sync respawn to everyone (including server via call_local)
+	if spawned_players.has(player_id):
+		spawned_players[player_id].sync_player_state.rpc(
+		new_position,  # New spawn position
+		player_health[player_id],  # Full health
+		true,  # Visible
+		false  # Not dead anymore
+		)
+		print("Server: Player ", player_id, " respawned at ", new_position, " with health ", player_health[player_id])
+
+# Increase a player's max health (for upgrades/powerups)
+func increase_max_health(player_id: int, amount: int):
+	if not multiplayer.is_server():
+		return
+	
+	if not player_max_health.has(player_id):
+		print("ERROR: Player ", player_id, " not found in max_health tracking")
+		return
+	
+	# Increase max health
+	player_max_health[player_id] += amount
+	
+	# Also increase current health by the same amount (so they get the benefit immediately)
+	player_health[player_id] += amount
+	
+	print("Server: Player ", player_id, " max health increased by ", amount, ". New max: ", player_max_health[player_id])
+	
+	# Sync the health increase to all clients
+	if spawned_players.has(player_id):
+		spawned_players[player_id].max_health = player_max_health[player_id]
+		spawned_players[player_id].set_health(player_health[player_id])
+		sync_health_to_clients.rpc(player_id, player_health[player_id])
 
 # Handle late joiners (someone joins after game started)
 func _on_player_connected(id):
@@ -178,37 +314,7 @@ func _on_server_disconnected():
 	# Return to main menu
 	get_tree().change_scene_to_file("res://Scenes/UI/MainMenu.tscn")
 
-
-# ===== KILL TRACKING =====
-
-# Called when a player kills another player
-func register_kill(killer_id: int, victim_id: int):
-	if multiplayer.is_server():
-		# Server updates GameState and syncs to all clients
-		GameState.add_kill(killer_id)
-		sync_kill_to_clients.rpc(killer_id)
-
-		# Update the killer's UI
-		if spawned_players.has(killer_id):
-			spawned_players[killer_id].update_kill_display()
-	else:
-		# Client requests server to register the kill
-		request_kill_from_server.rpc_id(1, killer_id, victim_id)
-
-# Client -> Server: Request to register a kill
-@rpc("any_peer", "reliable")
-func request_kill_from_server(killer_id: int, victim_id: int):
-	if multiplayer.is_server():
-		# Update GameState
-		GameState.add_kill(killer_id)
-
-		# Sync to all clients
-		sync_kill_to_clients.rpc(killer_id)
-
-		# Update the killer's UI on server
-		if spawned_players.has(killer_id):
-			spawned_players[killer_id].update_kill_display()
-
+# ===== KILL TRACKING SYNC =====
 # Server -> Clients: Sync kill count update
 @rpc("authority", "reliable")
 func sync_kill_to_clients(killer_id: int):
@@ -219,17 +325,7 @@ func sync_kill_to_clients(killer_id: int):
 	if spawned_players.has(killer_id):
 		spawned_players[killer_id].update_kill_display()
 
-# ===== HEALTH SYNCING =====
-
-# Sync a player's health change to all clients
-func sync_player_health(player_id: int, new_health: int):
-	if multiplayer.is_server():
-		# Server updates locally and syncs to clients
-		if spawned_players.has(player_id):
-			spawned_players[player_id].set_health(new_health)
-		sync_health_to_clients.rpc(player_id, new_health)
-	# Clients don't call this directly
-
+# ===== HEALTH SYNC =====
 # Server -> Clients: Sync health update
 @rpc("authority", "reliable")
 func sync_health_to_clients(player_id: int, new_health: int):
@@ -238,7 +334,6 @@ func sync_health_to_clients(player_id: int, new_health: int):
 		spawned_players[player_id].set_health(new_health)
 
 # ===== BULLET SPAWNING =====
-
 # Called by any player (client or server) when they want to shoot
 func request_bullet_spawn(spawn_pos: Vector2, direction: Vector2, shooter_id: int):
 	if multiplayer.is_server():

@@ -39,7 +39,6 @@ var kill_container:HBoxContainer = null
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var name_label: Label = $UIHolder/NameLabel
 @onready var ui_holder: Node2D = $UIHolder
-@onready var respawn_timer: Timer = $RespawnTimer
 
 func _ready():
 	# Set the collision layer/mask
@@ -60,9 +59,6 @@ func _ready():
 	# Initialize health
 	current_health = max_health
 	
-	# Setup respawn timer
-	respawn_timer.timeout.connect(_do_respawn)
-
 
 # Setup player with their info
 func setup(id: int, p_name: String, p_plane_index: int):
@@ -82,6 +78,10 @@ func setup(id: int, p_name: String, p_plane_index: int):
 
 func _physics_process(delta: float):
 	if not is_multiplayer_authority():
+		return
+	
+	# Don't process physics if respawning/dead
+	if is_respawning:
 		return
 	
 	# Rotation input (A/D)
@@ -260,80 +260,17 @@ func update_kill_display():
 		kill_label.text = str(kills)
 		print(player_name, " kill display updated: ", kills)
 
-func take_damage(damage: int = 1) -> bool:
-	if current_health <= 0:
-		# If we're already dead but haven't started respawning, trigger it now
-		if not is_respawning and is_multiplayer_authority():
-			is_respawning = true
-			visible = false
-			sync_visibility.rpc(false)
-			call_deferred("_respawn_player")
-		return false  # Already dead
-
+func take_damage(damage: int = 1):
+	# This function is now ONLY called by the Server through the GameManager
+	# It's a simple setter - no logic, just display the damage
 	var previous_health = current_health
 	current_health -= damage
 	print(player_name, " took damage! Health: ", previous_health, " -> ", current_health, "/", max_health)
 
 	# Update heart UI locally
 	update_heart_ui()
-
-	# Sync health change through GameManager (only on server)
-	if multiplayer.is_server() or not multiplayer.has_multiplayer_peer():
-		var game_manager = get_tree().get_root().get_node("Main")
-		if game_manager and game_manager.has_method("sync_player_health"):
-			game_manager.sync_player_health(player_id, current_health)
-
-	if current_health <= 0 and previous_health > 0:
-		print(player_name, " was KILLED! Previous health: ", previous_health, ", new health: ", current_health)
-
-		# Only the authority (owner of this player) handles respawn logic
-		if is_multiplayer_authority():
-			is_respawning = true
-			visible = false  # Hide locally immediately
-			sync_visibility.rpc(false)  # Tell others to hide us
-			# Don't respawn immediately - use a short delay or defer the respawn
-			# This prevents race conditions with multiple bullets
-			call_deferred("_respawn_player")
-
-		return true
-
-	return false  # Player survived
-
-func _respawn_player():
-	# Only the player with authority should start the respawn timer
-	if not is_multiplayer_authority():
-		return
-
-	print(player_name, " starting respawn timer")
-
-	# Start the respawn timer
-	if respawn_timer:
-		respawn_timer.start()
-	else:
-		print("ERROR: respawn_timer not found!")
-
-func _do_respawn():
-	# Only the player with authority should handle respawn logic
-	if not is_multiplayer_authority():
-		return
-
-	print(player_name, " executing respawn!")
-
-	# Respawn at a new random position
-	var spawn_positions = [
-		Vector2(0, -200), Vector2(200, 0), Vector2(0, 200), Vector2(-200, 0),
-		Vector2(150, -150), Vector2(150, 150), Vector2(-150, 150), Vector2(-150, -150)
-	]
-	var new_position = spawn_positions.pick_random()
-
-	# Apply respawn locally first
-	global_position = new_position
-	visible = true
-	set_health(max_health)
-	is_respawning = false
-
-	# Sync to everyone (including ourselves via call_local)
-	sync_respawn.rpc(new_position, max_health)
+	
+	# Note: Server (GameManager) handles all the death/respawn logic
 
 func set_health(new_health: int):
 	current_health = new_health
@@ -400,18 +337,22 @@ func wrap_screen():
 	if wrapped:
 		force_sync_position.rpc(global_position)
 
-@rpc("any_peer", "call_remote", "reliable")
-func sync_respawn(new_pos: Vector2, new_health: int):
-	# This syncs the respawn to everyone EXCEPT the caller (they already did it locally)
+@rpc("any_peer", "call_local", "reliable")
+func sync_player_state(new_pos: Vector2, new_health: int, visible_value: bool, is_dead: bool):
+	# Only accept from server
+	var sender = multiplayer.get_remote_sender_id()
+	if sender != 0 and sender != 1:  # 0 = local call, 1 = server
+		print("ERROR: sync_player_state called by non-server peer: ", sender)
+		return
+	
+	# Apply all state at once
 	global_position = new_pos
-	visible = true
-	set_health(new_health)
-	is_respawning = false
-	print(player_name, " received respawn sync at position: ", new_pos)
-
-@rpc("authority", "call_local", "reliable")
-func sync_visibility(visibleValue: bool):
-	visible = visibleValue
+	visible = visible_value
+	is_respawning = is_dead
+	current_health = new_health
+	update_heart_ui()
+	
+	print(player_name, " state synced - Pos: ", new_pos, " Health: ", new_health, " Visible: ", visible_value, " Dead: ", is_dead)
 
 @rpc("authority", "call_local", "reliable")
 func force_sync_position(pos: Vector2):
