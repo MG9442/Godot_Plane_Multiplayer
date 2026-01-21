@@ -7,10 +7,12 @@ Frequent Fighters is a multiplayer plane combat game built in Godot. This spec c
 - Multiplayer networking functional
 - Player plane sprite selection
 - Main combat scene with flying and shooting (spacebar)
-- Health system (3 HP per player)
+- **Server-authoritative health system** (3 HP per player, tracked on server)
+- **Server-authoritative damage processing** (all damage validated on server)
 - Kill tracking with star display under sprites
-- Kill attribution (only final blow counts)
-- Respawn system (1 second timer, and invincible during respawn)
+- Kill attribution (only final blow counts, processed on server)
+- **Server-controlled respawn system** (3 second timer, no shooting while dead)
+- **Server tracking:** `player_health`, `player_max_health`, `player_respawn_state` dictionaries
 
 ## New Features to Implement
 
@@ -23,9 +25,10 @@ Frequent Fighters is a multiplayer plane combat game built in Godot. This spec c
 - Number of rounds input (default: "5 rounds") - determines how many rounds total in a match
 
 **Requirements:**
-- These settings should be host-controlled (multiplayer host sets them)
-- Settings must sync to all connected players
+- **SERVER AUTHORITY:** These settings should be server-controlled (only server can modify)
+- Settings stored on server and synced to all clients via RPC
 - Default values if not set: FFA mode, 1 min per round, 5 rounds
+- Clients display settings but cannot modify them
 
 ---
 
@@ -39,9 +42,11 @@ Frequent Fighters is a multiplayer plane combat game built in Godot. This spec c
 - Respawn system polishing (Remove player ability to shoot during 1 second respawn timer)
 
 **Technical Notes:**
-- Timer needs to be synchronized across all clients in multiplayer
-- Use Godot's networking to ensure consistency
-- Pause timer during ability selection screens
+- **SERVER AUTHORITY:** Timer runs ONLY on server, synced to clients for display
+- Server tracks `current_round_time: float` and broadcasts updates
+- Clients display timer but cannot modify it
+- Server controls when round ends (clients just react to server's end-round RPC)
+- Pause timer during ability selection screens (server-side pause)
 
 ---
 
@@ -53,19 +58,27 @@ Frequent Fighters is a multiplayer plane combat game built in Godot. This spec c
 - If ALL players have 0 kills, NO ONE is considered a winner
 - Track round wins separately from total kills
 
-**Data Structure Needed:**
+**Data Structure Needed (SERVER-SIDE):**
 ```gdscript
-# Per player tracking
-var round_wins = 0  # Number of rounds this player has won
-var rounds_participated = []  # Which rounds they won
-var current_round_kills = 0  # Kills in current round (resets each round)
-var total_kills = 0  # Cumulative kills across all rounds
+# GameManager.gd - Server authoritative tracking
+var player_round_wins: Dictionary = {}  # {player_id: win_count}
+var player_rounds_won: Dictionary = {}  # {player_id: [round_numbers]}
+var player_current_round_kills: Dictionary = {}  # {player_id: kills_this_round}
+var player_total_kills: Dictionary = {}  # {player_id: total_kills_all_rounds}
+
+# Initialize in spawn_player():
+if multiplayer.is_server():
+    player_round_wins[player_id] = 0
+    player_rounds_won[player_id] = []
+    player_current_round_kills[player_id] = 0
+    player_total_kills[player_id] = 0
 ```
 
-**Important:**
-- Reset `current_round_kills` to 0 at the start of each new round
-- Track `round_wins` separately for overall game winner determination
-- Store which players won each round for tiebreaker logic
+**Important (SERVER-SIDE LOGIC):**
+- Server resets `player_current_round_kills` to 0 at the start of each new round
+- Server tracks `player_round_wins` separately for overall game winner determination
+- Server stores which players won each round in `player_rounds_won` for tiebreaker logic
+- Server syncs all these stats to clients via RPC for UI display only
 
 ---
 
@@ -107,10 +120,13 @@ IF in_tiebreaker_round:
 - If player doesn't select within 30 seconds, randomly assign an ability from the given choices
 - Show "Auto-selected" indicator for players who timed out
 
-**Multiplayer Sync:**
-- All players must complete selection before proceeding
-- Show waiting status for players who've already selected
-- Proceed when all selections made OR after 30 second timer expires
+**Multiplayer Sync (SERVER AUTHORITY):**
+- Server tracks which players have selected abilities: `var player_ability_selections: Dictionary = {}`
+- Clients send their selection to server via RPC: `request_ability_selection.rpc_id(1, ability_id)`
+- Server validates selection and applies ability
+- Server broadcasts when all selections complete OR timer expires
+- Server decides when to proceed to next round
+- Show waiting status for players who've already selected (based on server state)
 
 ---
 
@@ -163,38 +179,71 @@ IF in_tiebreaker_round:
    - Blink/Dash, Invisibility
    - When new movement selected, remove old movement
 
-**Implementation Logic:**
+**Implementation Logic (SERVER-SIDE):**
 ```gdscript
-func apply_ability(new_ability):
+# GameManager.gd - Server authoritative ability management
+var player_active_abilities: Dictionary = {}  # {player_id: [ability_list]}
+
+func apply_ability_to_player(player_id: int, new_ability: String):
+    # SERVER ONLY
+    if not multiplayer.is_server():
+        return
+
     # Check for conflicts
     var conflict_category = get_conflict_category(new_ability)
-    
+
     if conflict_category != null:
         # Remove existing ability in same category
-        remove_abilities_in_category(conflict_category)
-    
-    # Add new ability
-    active_abilities.append(new_ability)
-    apply_ability_effects(new_ability)
+        remove_player_abilities_in_category(player_id, conflict_category)
+
+    # Add new ability to server tracking
+    if not player_active_abilities.has(player_id):
+        player_active_abilities[player_id] = []
+    player_active_abilities[player_id].append(new_ability)
+
+    # Apply effects (server-side stat changes)
+    apply_ability_effects(player_id, new_ability)
+
+    # Sync to all clients for display
+    sync_player_abilities.rpc(player_id, player_active_abilities[player_id])
 ```
 
-### 5.3 Ability Persistence
-- Abilities carry through ALL rounds in a match
-- Abilities stack unless they conflict
-- Reset ALL abilities when new game/match starts
-- Abilities persist through death/respawn within same match
+### 5.3 Ability Persistence (SERVER-MANAGED)
+- Server tracks abilities in `player_active_abilities` dictionary
+- Abilities carry through ALL rounds in a match (server maintains state)
+- Abilities stack unless they conflict (server enforces conflict rules)
+- Server resets ALL abilities when new game/match starts
+- Abilities persist through death/respawn within same match (server doesn't clear on respawn)
+- On player respawn, server re-applies ability stat bonuses (like +health from abilities)
 
-### 5.4 Random Selection Weighting
+### 5.4 Random Selection Weighting (SERVER-SIDE)
 ```gdscript
-# Example weighted random selection
-func get_weighted_random_ability(tier_abilities):
+# GameManager.gd - Server generates ability choices
+func generate_ability_choices_for_player(player_id: int, tier: String) -> Array:
+    # SERVER ONLY - generates 3 random abilities for a player
+    if not multiplayer.is_server():
+        return []
+
+    var tier_abilities = get_abilities_for_tier(tier)
+    var choices = []
+
+    # Pick 3 unique abilities using weighted random
+    for i in range(3):
+        var ability = get_weighted_random_ability(tier_abilities)
+        choices.append(ability)
+        # Remove from pool to ensure uniqueness
+        tier_abilities.erase(ability)
+
+    return choices
+
+func get_weighted_random_ability(tier_abilities: Array):
     var total_weight = 0
     for ability in tier_abilities:
         total_weight += ability.weight
-    
+
     var rand_value = randf() * total_weight
     var cumulative = 0
-    
+
     for ability in tier_abilities:
         cumulative += ability.weight
         if rand_value <= cumulative:
@@ -243,11 +292,12 @@ Tiebreaker Round 3:
 Result: Player 1 WINS (finally broke tie)
 ```
 
-**Technical Requirements:**
-- Track which players are "in tiebreaker"
-- After each tiebreaker, recalculate who remains tied
-- Continue until single winner emerges
-- No ability selection during ANY tiebreaker rounds
+**Technical Requirements (SERVER AUTHORITY):**
+- Server tracks which players are "in tiebreaker": `var tiebreaker_participants: Array = []`
+- Server recalculates after each tiebreaker who remains tied
+- Server continues tiebreaker rounds until single winner emerges
+- Server enforces: No ability selection during ANY tiebreaker rounds
+- Server broadcasts tiebreaker state to all clients for UI display
 
 ---
 
@@ -325,54 +375,63 @@ VICTORY_SCREEN (show overall winner)
 
 ### 9. Multiplayer Synchronization Points
 
-**Critical Sync Points:**
-1. Round timer synchronization (server authoritative)
-2. Kill counting and attribution
-3. Round win determination (server decides)
-4. Ability selection (all clients must confirm before proceeding)
-5. Tiebreaker participant list
-6. Ability effects (server validates, clients display)
+**Critical Sync Points (ALL SERVER-AUTHORITATIVE):**
+1. **Round timer** - Server runs timer, broadcasts current_time to clients for display
+2. **Kill counting** - Server increments `player_current_round_kills[player_id]` on each kill
+3. **Round win determination** - Server calculates winners, updates `player_round_wins`
+4. **Ability selection** - Clients send requests, server validates and applies
+5. **Tiebreaker participants** - Server determines and broadcasts participant list
+6. **Ability effects** - Server applies stat changes, syncs to clients
 
-**Server Authority:**
-- Server determines round winners
-- Server tracks round wins
-- Server manages tiebreaker logic
-- Server enforces ability conflicts
+**Server Authority (GameManager.gd):**
+- Server determines round winners via `determine_round_winners()` function
+- Server tracks round wins in `player_round_wins: Dictionary`
+- Server manages tiebreaker logic in `start_tiebreaker()` function
+- Server enforces ability conflicts in `apply_ability_to_player()`
+- Server tracks all player abilities in `player_active_abilities: Dictionary`
+- Server owns all game state, clients are "dumb displays"
 
 **Client Responsibilities:**
-- Display UI based on server state
-- Send ability selections to server
-- Render ability effects locally
-- Display synchronized timers
+- Display UI based on server state (received via RPCs)
+- Send ability selections to server: `request_ability_selection.rpc_id(1, ability_id)`
+- Render ability effects locally (visual only, stats controlled by server)
+- Display synchronized timers (received from server)
+- NEVER modify game state locally - always request changes from server
 
 ---
 
 ### 10. Edge Cases to Handle
 
-1. **Player disconnects during ability selection**
-   - Auto-select random ability for them
-   - Continue when remaining players ready OR timer expires
+1. **Player disconnects during ability selection** (SERVER HANDLES)
+   - Server detects disconnect via `peer_disconnected` signal
+   - Server auto-selects random ability from their choices
+   - Server continues when remaining players ready OR timer expires
 
-2. **Player disconnects during combat**
-   - Their settings (kills/rounds wins/abilities/sprite) persist until new match
-   - They're excluded from future tiebreakers if they don't reconnect
+2. **Player disconnects during combat** (SERVER HANDLES)
+   - Server maintains their state in dictionaries (kills/round wins/abilities)
+   - Server marks them as disconnected but keeps data
+   - Server excludes them from future tiebreakers if they don't reconnect
 
-3. **All players have 0 kills**
-   - No round winner declared
-   - All players choose from BASIC abilities next round
+3. **All players have 0 kills** (SERVER DETERMINES)
+   - Server's `determine_round_winners()` returns empty array
+   - Server broadcasts "no winners" state
+   - Server ensures all players get BASIC abilities next round
 
-4. **Player rejoins mid-match**
-   - Can join ongoing match
-   - Must spectate until next round
-   - Their settings (kills/rounds wins/abilities/sprite) persist on rejoin for existing match
+4. **Player rejoins mid-match** (SERVER VALIDATES)
+   - Server checks if player_id exists in current match data
+   - If exists: Server re-syncs their full state (abilities, stats, round wins)
+   - Server forces them to spectate (is_respawning = true) until next round
+   - Server restores their sprite/abilities/stats from dictionaries
 
-5. **Tiebreaker with 2+ players, multiple tie again**
-   - Could result in subset (example showed 3→2→2 elimination)
-   - System handles any number of tied players
+5. **Tiebreaker with 2+ players, multiple tie again** (SERVER LOGIC)
+   - Server's tiebreaker logic handles subset elimination
+   - Server recalculates `tiebreaker_participants` after each round
+   - System handles any number of tied players (server iterates until one winner)
 
-6. **Rapid fire + Super Rapid Fire stacking**
-   - Both are stackable, so fire rate compounds
-   - Should work as intended (very fast shooting)
+6. **Rapid fire + Super Rapid Fire stacking** (SERVER VALIDATES)
+   - Both are stackable (server allows both in `player_active_abilities`)
+   - Server applies fire rate multipliers: `base_cooldown * rapid_fire_mult * super_rapid_fire_mult`
+   - Works as intended (very fast shooting, validated on server)
 
 ---
 
@@ -446,24 +505,50 @@ VICTORY_SCREEN (show overall winner)
 **Godot Version:** 4.3
 **Networking:** Godot's built-in high-level multiplayer
 **Language:** GDScript
+**Architecture:** **Server-Authoritative** (all game state on server, clients display only)
+
 **Existing Systems to Integrate:**
-- Current health system (3 HP)
-- Existing respawn logic (1 sec, invincible, no shooting)
-- Kill tracking system
-- Sprite selection system
+- **Server-authoritative health system** (tracked in `player_health`, `player_max_health` dicts)
+- **Server-controlled respawn** (3 sec timer, tracked in `player_respawn_state`)
+- **Server-side kill tracking** (increments `player_current_round_kills` on server)
+- Sprite selection system (client-initiated, server validates)
+
+**Server State Dictionaries (GameManager.gd):**
+- `player_health: Dictionary`
+- `player_max_health: Dictionary`
+- `player_respawn_state: Dictionary`
+- `player_round_wins: Dictionary` (new)
+- `player_current_round_kills: Dictionary` (new)
+- `player_active_abilities: Dictionary` (new)
 
 ---
 
 ## Notes for Claude Code
 
-- Prioritize server-authoritative logic for all game state
-- Use Godot signals for state transitions
-- Keep ability effects modular (separate script/resource for each)
-- Use Godot's RPC system for multiplayer sync
-- Consider creating an AbilityManager singleton for ability logic
-- Create a GameStateManager for round/match flow
+### **CRITICAL: Server-Authoritative Architecture**
+- **ALL game state lives on the server** (GameManager.gd dictionaries)
+- **Clients are "dumb displays"** - they only render what server tells them
+- **Never trust client input** - server validates all requests
+- **Use RPC pattern:** Client requests → Server validates → Server broadcasts
+
+### **Implementation Guidelines:**
+- Store ALL game state in GameManager.gd dictionaries (server-side)
+- Use Godot signals for state transitions (server emits, clients listen)
+- Keep ability effects modular but server-validated
+- Use `@rpc("any_peer", "call_local", "reliable")` with server validation pattern:
+  ```gdscript
+  @rpc("any_peer", "call_local", "reliable")
+  func sync_game_state(...):
+      var sender = multiplayer.get_remote_sender_id()
+      if sender != 0 and sender != 1:  # Only server can send
+          return
+      # Apply state...
+  ```
+- Consider creating an AbilityManager in GameManager for ability logic (server-side)
+- Create a RoundManager (already exists) for round/match flow (server-controlled)
 - UI should be responsive and clear about what's happening
 - Add debug logging for testing multiplayer edge cases
+- **Pattern:** `player_stat_name: Dictionary = {player_id: value}` for all player stats
 
 ---
 
