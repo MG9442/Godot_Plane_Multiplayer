@@ -75,7 +75,7 @@ func register_player(id: int, p_name: String):
 	# Register in GameState
 	GameState.register_player(id, p_name, 0)
 	
-	# Sync this player to all clients (including the one who just joined)
+	# Sync this player to all clients
 	sync_player_added.rpc(id, p_name)
 
 
@@ -127,7 +127,7 @@ func add_player(id: int, p_name: String):
 	player_cards[id] = card
 	
 	var is_local = (id == local_player_id)
-	print("Is local player: ", is_local)
+	#print("Is local player: ", is_local)
 	card.setup(id, p_name, is_local)
 	
 	# Connect signals only for local player

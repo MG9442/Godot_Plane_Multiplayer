@@ -4,7 +4,7 @@ extends Node
 var local_player_name: String = "Player"
 var local_player_id: int = 0
 
-# All players data {player_id: {name: "", plane_index: 0}}
+# All players data {player_id: {name: "", plane_index: 0, kills}}
 var players: Dictionary = {}
 
 # Game settings (set by host in lobby)
@@ -27,7 +27,7 @@ func register_player(id: int, p_name: String, plane_index: int = 0):
 		"plane_index": plane_index,
 		"kills": 0
 	}
-	print("GameState: Registered player ", id, " - ", p_name, " - Plane #", plane_index)
+	#print("GameState: Registered player ", id, " - ", p_name, " - Plane #", plane_index)
 
 # Update player's plane selection
 func update_player_plane(id: int, plane_index: int):
@@ -50,13 +50,18 @@ func get_player_plane(id: int) -> int:
 func add_kill(id: int):
 	if players.has(id):
 		players[id].kills += 1
-		print("GameState: Player ", id, " now has ", players[id].kills, " kills")
+		#print("GameState: Player ", id, " now has ", players[id].kills, " kills")
 
 # Get player's kill count
 func get_kills(id: int) -> int:
 	if players.has(id):
 		return players[id].kills
 	return 0
+
+func reset_kills():
+	for id in players.keys():
+		players[id].kills = 0
+	print("GameState: Reset all kill counts")
 
 # Clear all player data (for disconnecting/returning to menu)
 func clear_players():

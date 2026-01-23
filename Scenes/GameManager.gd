@@ -27,8 +27,8 @@ var player_respawn_state: Dictionary = {} # {player_id: {is_dead: bool, respawn_
 var respawn_delay: float = 3.0 # Time before respawn in seconds
 
 func _ready():
-	print("GameManager _ready() called")
-	print("Players container: ", players_container)
+	#print("GameManager _ready() called")
+	#print("Players container: ", players_container)
 	
 	# Wait a frame for everything to be ready
 	await get_tree().process_frame
@@ -63,7 +63,7 @@ func _process(_delta):
 
 func toggle_pause():
 	if not multiplayer.is_server():
-		print("Only the host can pause the game!")
+		#print("GameManager(): Only the host can pause the game!")
 		return
 	
 	is_game_paused = !is_game_paused
@@ -77,13 +77,13 @@ func toggle_pause():
 	sync_pause_state.rpc(is_game_paused)
 
 func pause_game():
-	print("Pausing game...")
+	print("GameManager(): Pausing game...")
 	
 	# Pause the game tree (everything except pause menu)
 	get_tree().paused = true
 
 func resume_game():
-	print("Resuming game...")
+	print("GameManager(): Resuming game...")
 	
 	# Resume the game tree
 	get_tree().paused = false
@@ -103,8 +103,8 @@ func sync_pause_state(paused: bool):
 func spawn_all_players():
 	print("=== GameManager: Spawning all players ===")
 	print("GameState.players: ", GameState.players)
-	print("Number of players: ", GameState.players.size())
-	print("My multiplayer ID: ", multiplayer.get_unique_id())
+	#print("Number of players: ", GameState.players.size())
+	#print("My multiplayer ID: ", multiplayer.get_unique_id())
 	
 	if multiplayer.is_server():
 		# Server spawns immediately
@@ -233,7 +233,7 @@ func execute_respawn(player_id: int):
 	if not multiplayer.is_server():
 		return
 	
-	print("Server: Executing respawn for player ", player_id)
+	#print("Server: Executing respawn for player ", player_id)
 	
 	# Pick a random spawn point
 	var new_position = spawn_positions.pick_random()
@@ -296,7 +296,7 @@ func _on_player_disconnected(id):
 # Server sends player data to clients
 @rpc("authority", "reliable")
 func sync_spawn_data(players_data: Dictionary):
-	print("Client received spawn data: ", players_data)
+	#print("Client received spawn data: ", players_data)
 	GameState.players = players_data
 	_do_spawn()
 

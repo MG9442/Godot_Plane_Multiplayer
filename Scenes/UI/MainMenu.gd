@@ -29,13 +29,6 @@ func _ready():
 
 
 func _on_host_button_pressed():
-	player_name = player_name_input.text
-	if player_name.is_empty():
-		player_name = "Host"
-	
-	# Store in global (we'll create this next)
-	GameState.local_player_name = player_name
-	
 	var peer = ENetMultiplayerPeer.new()
 	var error = peer.create_server(PORT, MAX_PLAYERS)
 	
@@ -101,6 +94,14 @@ func _on_start_button_pressed():
 
 @rpc("authority", "call_local")
 func start_game():
+	# Obtain Player names
+	player_name = player_name_input.text
+	if player_name.is_empty():
+		player_name = "Player" + str(randi() % 1000)
+	
+	# Store in global
+	GameState.local_player_name = player_name
+	
 	# This will be called on all clients when the host starts the game
 	get_tree().change_scene_to_file("res://Scenes/UI/PlaneSelection.tscn")
 
@@ -156,7 +157,7 @@ func load_settings():
 	if err == OK:
 		var saved_ip = config.get_value("network", "last_ip", "127.0.0.1")
 		ip_input.text = saved_ip
-		print("Loaded saved IP: ", saved_ip)
+		#print("Loaded saved IP: ", saved_ip)
 	else:
 		# File doesn't exist yet, use default
 		ip_input.text = ""
@@ -174,6 +175,7 @@ func save_settings(ip: String):
 	# Write to file
 	var err = config.save(CONFIG_FILE)
 	if err == OK:
-		print("Saved IP: ", ip)
+		#print("Saved IP: ", ip)
+		pass
 	else:
 		print("Error saving settings: ", err)

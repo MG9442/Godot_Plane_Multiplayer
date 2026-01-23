@@ -65,12 +65,12 @@ func despawn():
 
 func _on_body_entered(body):
 	# Handle collision with CharacterBody2D (players)
-	print("Bullet collided with body: ", body.name)
+	#print("Bullet collided with body: ", body.name)
 
 	if body.has_method("get") and body.get("player_id") != null:
 		# It's a player
 		if body.player_id != shooter_id:
-			print("Bullet hit enemy player: ", body.player_name)
+			#print("Bullet hit enemy player: ", body.player_name)
 			
 			# Only process damage on the server or in single-player
 			if multiplayer.is_server() or not multiplayer.has_multiplayer_peer():
@@ -92,5 +92,5 @@ func _on_body_entered(body):
 
 func _on_area_entered(area):
 	# Handle collision with other Area2D nodes if needed
-	print("Bullet hit area: ", area.name)
+	#print("Bullet hit area: ", area.name)
 	despawn()

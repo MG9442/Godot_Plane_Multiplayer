@@ -41,10 +41,6 @@ var kill_container:HBoxContainer = null
 @onready var ui_holder: Node2D = $UIHolder
 
 func _ready():
-	# Set the collision layer/mask
-	collision_layer = 1
-	collision_mask = 1
-	
 	# Start at minimum speed
 	current_speed = min_speed
 	
@@ -58,23 +54,12 @@ func _ready():
 
 	# Initialize health
 	current_health = max_health
-	
 
-# Setup player with their info
-func setup(id: int, p_name: String, p_plane_index: int):
-	player_id = id
-	player_name = p_name
-	plane_index = p_plane_index
-	
-	# Load the plane sprite
-	var plane_path = "res://Sprites/Ships/ship_%04d.png" % plane_index
-	var texture = load(plane_path)
-	if texture:
-		sprite.texture = texture
-	
-	# Set name label
-	name_label.text = p_name
-	
+# Network sync
+func _process(_delta: float):
+	if is_multiplayer_authority():
+		# Send position and rotation to other players
+		update_remote_position.rpc(global_position, rotation, current_speed)
 
 func _physics_process(delta: float):
 	if not is_multiplayer_authority():
@@ -124,7 +109,7 @@ func shoot():
 		print(player_name, " can't shoot - max bullets reached (", max_bullets, ")")
 		return
 
-	print(player_name, " shoots! (", active_bullets.size() + 1, "/", max_bullets, ")")
+	#print(player_name, " shoots! (", active_bullets.size() + 1, "/", max_bullets, ")")
 	
 	# Calculate bullet spawn position (in front of plane)
 	var forward_direction = Vector2.RIGHT.rotated(rotation)
@@ -140,6 +125,20 @@ func shoot():
 	# Update bullet UI - grey out the next available bullet
 	update_bullet_ui()
 
+# Setup player with their info
+func setup(id: int, p_name: String, p_plane_index: int):
+	player_id = id
+	player_name = p_name
+	plane_index = p_plane_index
+	
+	# Load the plane sprite
+	var plane_path = "res://Sprites/Ships/ship_%04d.png" % plane_index
+	var texture = load(plane_path)
+	if texture:
+		sprite.texture = texture
+	
+	# Set name label
+	name_label.text = p_name
 
 func spawn_bullet_local(spawn_pos: Vector2, direction: Vector2, shooter_id: int):
 	# This is called by GameManager to spawn a bullet locally
@@ -167,7 +166,7 @@ func spawn_bullet_local(spawn_pos: Vector2, direction: Vector2, shooter_id: int)
 func _on_bullet_despawned(bullet):
 	if bullet in active_bullets:
 		active_bullets.erase(bullet)
-	print(player_name, " bullet despawned. Active bullets: ", active_bullets.size(), "/", max_bullets)
+	#print(player_name, " bullet despawned. Active bullets: ", active_bullets.size(), "/", max_bullets)
 	
 	# Update bullet UI - restore color
 	update_bullet_ui()
@@ -190,8 +189,8 @@ func setup_bullet_ui():
 
 func update_bullet_ui():
 	# Update bullet indicators based on active bullets count
-	print("update_bullet_ui(): bullet_indicators.size() = ", bullet_indicators.size())
-	print("update_bullet_ui(): active_bullets.size() = ", active_bullets.size())
+	#print("update_bullet_ui(): bullet_indicators.size() = ", bullet_indicators.size())
+	#print("update_bullet_ui(): active_bullets.size() = ", active_bullets.size())
 	for i in range(bullet_indicators.size()):
 		if i < active_bullets.size():
 			# This bullet is in use - grey it out
@@ -258,7 +257,7 @@ func update_kill_display():
 	if kill_label and kills > 0:
 		kill_container.visible = true
 		kill_label.text = str(kills)
-		print(player_name, " kill display updated: ", kills)
+		#print(player_name, " kill display updated: ", kills)
 
 func take_damage(damage: int = 1):
 	# This function is now ONLY called by the Server through the GameManager
@@ -275,7 +274,7 @@ func take_damage(damage: int = 1):
 func set_health(new_health: int):
 	current_health = new_health
 	update_heart_ui()
-	print(player_name, " health set to: ", current_health)
+	#print(player_name, " health set to: ", current_health)
 
 func update_heart_ui():
 	# Update heart visibility based on current health
@@ -286,12 +285,6 @@ func update_heart_ui():
 		else:
 			# Heart is lost - show empty texture
 			heart_indicators[i].texture = heart_indicators[i].get_meta("empty_texture")
-
-# Network sync
-func _process(_delta: float):
-	if is_multiplayer_authority():
-		# Send position and rotation to other players
-		update_remote_position.rpc(global_position, rotation, current_speed)
 
 func wrap_screen():
 	# Only wrap for the local player
@@ -352,7 +345,7 @@ func sync_player_state(new_pos: Vector2, new_health: int, visible_value: bool, i
 	current_health = new_health
 	update_heart_ui()
 	
-	print(player_name, " state synced - Pos: ", new_pos, " Health: ", new_health, " Visible: ", visible_value, " Dead: ", is_dead)
+	#print(player_name, " state synced - Pos: ", new_pos, " Health: ", new_health, " Visible: ", visible_value, " Dead: ", is_dead)
 
 @rpc("authority", "call_local", "reliable")
 func force_sync_position(pos: Vector2):
